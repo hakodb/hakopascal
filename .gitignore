@@ -4,3 +4,6 @@
 *.a
 native/*
 !native/.gitkeep
+
+link*.res
+ppas.bat
