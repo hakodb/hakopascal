@@ -1,0 +1,6 @@
+*.ppu
+*.o
+*.or
+*.a
+native/*
+!native/.gitkeep
