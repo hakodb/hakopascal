@@ -17,7 +17,7 @@ $Native = Join-Path $Root "native"
 New-Item -ItemType Directory -Force $Native | Out-Null
 
 if ($CoreDir -ne "") {
-    $dll = Join-Path $CoreDir "target\release\firelite.dll"
+    $dll = Join-Path $CoreDir "target\release\hakodb.dll"
     if (-not (Test-Path $dll)) { throw "no release DLL at $dll (cargo build --release first)" }
     Copy-Item $dll $Native -Force
     Write-Output "synced from checkout: $CoreDir"
