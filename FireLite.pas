@@ -75,11 +75,11 @@ type
   { TFLDocument: Binary Document Model }
   TFLDocument = class
   private
-    FHandle: PFL_Doc;
+    FHandle: PHK_Doc;
     FOwned: Boolean;
   public
     constructor Create; overload;
-    constructor CreateFromHandle(AHandle: PFL_Doc; AOwned: Boolean); overload;
+    constructor CreateFromHandle(AHandle: PHK_Doc; AOwned: Boolean); overload;
     destructor Destroy; override;
 
     function InsertStr(const Key, Value: string): TFLDocument;
@@ -96,7 +96,7 @@ type
 
     class function FromJSON(const Obj: TJSONObject): TFLDocument;
     function ToJSON: string;
-    property Handle: PFL_Doc read FHandle;
+    property Handle: PHK_Doc read FHandle;
   end;
 
   { TFLBatch: Atomic Write Operations }
@@ -193,7 +193,7 @@ FLimit, FOffset: NativeUInt;
 FHasLimit, FHasOffset: Boolean;
 FDeferBlobs: Boolean;
     FSelectFields: TStringList;
-    FStartAt, FStartAfter, FEndAt, FEndBefore: PFL_Doc;
+    FStartAt, FStartAfter, FEndAt, FEndBefore: PHK_Doc;
     FStartAfterRaw: PFL_RawDoc;
     FWhereOrStr: array of record Field, Value: string; end;
     FWhereOrInt: array of record Field: string; Value: Int64; end;
@@ -358,14 +358,14 @@ function ConsumeCString(P: PChar): string;
 begin
   if P = nil then Exit('');
   Result := string(P);
-  fl_string_free(P);
+  hk_string_free(P);
 end;
 
 procedure CheckStatus(Code: cint32; const Context: string);
 var P: PChar;
 begin
   if Code <> 0 then begin
-    P := fl_last_error;
+    P := hk_last_error;
     raise EFireLiteError.CreateFmt('%s failed: %s', [Context, string(P)]);
   end;
 end;
@@ -373,67 +373,67 @@ end;
 { TFLArray }
 
 constructor TFLArray.Create;
-begin FHandle := fl_array_new; FOwned := True; end;
+begin FHandle := hk_array_new; FOwned := True; end;
 
 destructor TFLArray.Destroy;
-begin if FOwned and (FHandle <> nil) then fl_array_free(FHandle); inherited; end;
+begin if FOwned and (FHandle <> nil) then hk_array_free(FHandle); inherited; end;
 
 procedure TFLArray.EnsureHandle;
 begin if FHandle = nil then raise EFireLiteError.Create('Array handle consumed'); end;
 
 function TFLArray.AppendStr(const Value: string): TFLArray;
-begin EnsureHandle; fl_array_append_str(FHandle, PChar(Value)); Result := Self; end;
+begin EnsureHandle; hk_array_append_str(FHandle, PChar(Value)); Result := Self; end;
 
 function TFLArray.AppendInt(Value: Int64): TFLArray;
-begin EnsureHandle; fl_array_append_int(FHandle, Value); Result := Self; end;
+begin EnsureHandle; hk_array_append_int(FHandle, Value); Result := Self; end;
 
 function TFLArray.AppendDoc(ADoc: TFLDocument): TFLArray;
-begin EnsureHandle; fl_array_append_doc(FHandle, ADoc.Handle); Result := Self; end;
+begin EnsureHandle; hk_array_append_doc(FHandle, ADoc.Handle); Result := Self; end;
 
 { TFLConfig }
 
 constructor TFLConfig.Create;
 begin
   inherited Create;
-  FHandle := fl_config_new;
+  FHandle := hk_config_new;
 end;
 
 destructor TFLConfig.Destroy;
 begin
-  if FHandle <> nil then fl_config_free(FHandle);
+  if FHandle <> nil then hk_config_free(FHandle);
   inherited;
 end;
 
 function TFLConfig.SetDurability(Mode: TFLDurabilityMode): TFLConfig;
 begin
-  fl_config_set_durability(FHandle, Ord(Mode));
+  hk_config_set_durability(FHandle, Ord(Mode));
   Result := Self;
 end;
 
 function TFLConfig.SetEncryptionKey(const Key: string): TFLConfig;
 begin
-  fl_config_set_encryption_key(FHandle, PChar(Key));
+  hk_config_set_encryption_key(FHandle, PChar(Key));
   Result := Self;
 end;
 
 function TFLConfig.SetAuditLog(Enabled: Boolean; const LogPath: string): TFLConfig;
 begin
   if LogPath = '' then
-    fl_config_set_audit_log(FHandle, Enabled, nil)
+    hk_config_set_audit_log(FHandle, Enabled, nil)
   else
-    fl_config_set_audit_log(FHandle, Enabled, PChar(LogPath));
+    hk_config_set_audit_log(FHandle, Enabled, PChar(LogPath));
   Result := Self;
 end;
 
 function TFLConfig.SetQueryWorkers(Count: NativeUInt): TFLConfig;
 begin
-  fl_config_set_query_workers(FHandle, Count);
+  hk_config_set_query_workers(FHandle, Count);
   Result := Self;
 end;
 
 function TFLConfig.SetMemoryLimits(MMapSize, MaxInlinedBytes: NativeUInt): TFLConfig;
 begin
-  fl_config_set_memory_limits(FHandle, MMapSize, MaxInlinedBytes);
+  hk_config_set_memory_limits(FHandle, MMapSize, MaxInlinedBytes);
   Result := Self;
 end;
 
@@ -448,81 +448,81 @@ begin
     S := S + '"' + Collections[I] + '"';
   end;
   S := S + ']';
-  CheckStatus(fl_config_set_encrypted_collections(FHandle, PChar(S)), 'SetEncryptedCollections');
+  CheckStatus(hk_config_set_encrypted_collections(FHandle, PChar(S)), 'SetEncryptedCollections');
   Result := Self;
 end;
 
 function TFLConfig.SetStorageTuning(PageSize, CompactionThreshold, GroupCommitMaxOps: NativeUInt): TFLConfig;
 begin
-  fl_config_set_storage_tuning(FHandle, PageSize, CompactionThreshold, GroupCommitMaxOps);
+  hk_config_set_storage_tuning(FHandle, PageSize, CompactionThreshold, GroupCommitMaxOps);
   Result := Self;
 end;
 
 function TFLConfig.SetBlobThreshold(ThresholdBytes: NativeUInt): TFLConfig;
 begin
-  fl_config_set_blob_threshold(FHandle, ThresholdBytes);
+  hk_config_set_blob_threshold(FHandle, ThresholdBytes);
   Result := Self;
 end;
 
 function TFLConfig.SetCompression(Enabled: Boolean; Level: Integer): TFLConfig;
 begin
-  fl_config_set_compression(FHandle, Enabled, Level);
+  hk_config_set_compression(FHandle, Enabled, Level);
   Result := Self;
 end;
 
 function TFLConfig.SetBackgroundMaintenance(Enabled: Boolean): TFLConfig;
 begin
-  fl_config_set_background_maintenance(FHandle, Enabled);
+  hk_config_set_background_maintenance(FHandle, Enabled);
   Result := Self;
 end;
 
 { TFLDocument }
 
 constructor TFLDocument.Create;
-begin FHandle := fl_doc_new; FOwned := True; end;
+begin FHandle := hk_doc_new; FOwned := True; end;
 
-constructor TFLDocument.CreateFromHandle(AHandle: PFL_Doc; AOwned: Boolean);
+constructor TFLDocument.CreateFromHandle(AHandle: PHK_Doc; AOwned: Boolean);
 begin FHandle := AHandle; FOwned := AOwned; end;
 
 destructor TFLDocument.Destroy;
-begin if FOwned and (FHandle <> nil) then fl_doc_free(FHandle); inherited; end;
+begin if FOwned and (FHandle <> nil) then hk_doc_free(FHandle); inherited; end;
 
 function TFLDocument.InsertStr(const Key, Value: string): TFLDocument;
-begin fl_doc_insert_str(FHandle, PChar(Key), PChar(Value)); Result := Self; end;
+begin hk_doc_insert_str(FHandle, PChar(Key), PChar(Value)); Result := Self; end;
 
 function TFLDocument.InsertInt(const Key: string; Value: Int64): TFLDocument;
-begin fl_doc_insert_int(FHandle, PChar(Key), Value); Result := Self; end;
+begin hk_doc_insert_int(FHandle, PChar(Key), Value); Result := Self; end;
 
 function TFLDocument.InsertFloat(const Key: string; Value: Double): TFLDocument;
-begin fl_doc_insert_float(FHandle, PChar(Key), Value); Result := Self; end;
+begin hk_doc_insert_float(FHandle, PChar(Key), Value); Result := Self; end;
 
 function TFLDocument.InsertBool(const Key: string; Value: Boolean): TFLDocument;
-begin fl_doc_insert_bool(FHandle, PChar(Key), Value); Result := Self; end;
+begin hk_doc_insert_bool(FHandle, PChar(Key), Value); Result := Self; end;
 
 function TFLDocument.InsertNull(const Key: string): TFLDocument;
-begin fl_doc_insert_null(FHandle, PChar(Key)); Result := Self; end;
+begin hk_doc_insert_null(FHandle, PChar(Key)); Result := Self; end;
 
 function TFLDocument.InsertBin(const Key: string; Data: PByte; Len: NativeUInt): TFLDocument;
-begin fl_doc_insert_bin(FHandle, PChar(Key), Data, Len); Result := Self; end;
+begin hk_doc_insert_bin(FHandle, PChar(Key), Data, Len); Result := Self; end;
 
 function TFLDocument.InsertTimestamp(const Key: string; Micros: Int64): TFLDocument;
-begin fl_doc_insert_timestamp(FHandle, PChar(Key), Micros); Result := Self; end;
+begin hk_doc_insert_timestamp(FHandle, PChar(Key), Micros); Result := Self; end;
 
 function TFLDocument.InsertServerTimestamp(const Key: string): TFLDocument;
-begin fl_doc_insert_server_timestamp(FHandle, PChar(Key)); Result := Self; end;
+begin hk_doc_insert_server_timestamp(FHandle, PChar(Key)); Result := Self; end;
 
 function TFLDocument.InsertDoc(const Key: string; ADoc: TFLDocument): TFLDocument;
-begin fl_doc_insert_doc(FHandle, PChar(Key), ADoc.Handle); Result := Self; end;
+begin hk_doc_insert_doc(FHandle, PChar(Key), ADoc.Handle); Result := Self; end;
 
 function TFLDocument.InsertArray(const Key: string; AArray: TFLArray): TFLDocument;
 begin
-  CheckStatus(fl_doc_insert_array(FHandle, PChar(Key), AArray.Handle), 'InsertArray');
+  CheckStatus(hk_doc_insert_array(FHandle, PChar(Key), AArray.Handle), 'InsertArray');
   AArray.FHandle := nil; // Handled by Rust ownership
   Result := Self;
 end;
 
 function TFLDocument.InsertRef(const Key, TargetCol, TargetID: string): TFLDocument;
-begin fl_doc_insert_reference(FHandle, PChar(Key), PChar(TargetCol), PChar(TargetID)); Result := Self; end;
+begin hk_doc_insert_reference(FHandle, PChar(Key), PChar(TargetCol), PChar(TargetID)); Result := Self; end;
 
 class function TFLDocument.FromJSON(const Obj: TJSONObject): TFLDocument;
 var 
@@ -557,46 +557,46 @@ begin
 end;
 
 function TFLDocument.ToJSON: string;
-begin Result := ConsumeCString(fl_doc_to_json(FHandle)); end;
+begin Result := ConsumeCString(hk_doc_to_json(FHandle)); end;
 
 { TFLBatch }
 
 constructor TFLBatch.Create(ADBHandle: PFL_Engine);
-begin inherited Create; FDBHandle := ADBHandle; FHandle := fl_batch_new; end;
+begin inherited Create; FDBHandle := ADBHandle; FHandle := hk_batch_new; end;
 
 destructor TFLBatch.Destroy;
-begin if (FHandle <> nil) and not FCommitted then fl_batch_free(FHandle); inherited; end;
+begin if (FHandle <> nil) and not FCommitted then hk_batch_free(FHandle); inherited; end;
 
 function TFLBatch.SetDoc(const Col, ID: string; Doc: TFLDocument): TFLBatch;
-begin CheckStatus(fl_batch_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'BatchSet'); Result := Self; end;
+begin CheckStatus(hk_batch_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'BatchSet'); Result := Self; end;
 
 function TFLBatch.Delete(const Col, ID: string): TFLBatch;
-begin CheckStatus(fl_batch_delete(FHandle, PChar(Col), PChar(ID)), 'BatchDelete'); Result := Self; end;
+begin CheckStatus(hk_batch_delete(FHandle, PChar(Col), PChar(ID)), 'BatchDelete'); Result := Self; end;
 
 procedure TFLBatch.Commit;
-begin CheckStatus(fl_batch_commit(FDBHandle, FHandle), 'BatchCommit'); FCommitted := True; end;
+begin CheckStatus(hk_batch_commit(FDBHandle, FHandle), 'BatchCommit'); FCommitted := True; end;
 
 { TFLTransaction }
 
 constructor TFLTransaction.Create(ADBHandle: PFL_Engine);
-begin inherited Create; FDBHandle := ADBHandle; FHandle := fl_transaction_begin(FDBHandle); end;
+begin inherited Create; FDBHandle := ADBHandle; FHandle := hk_transaction_begin(FDBHandle); end;
 
 destructor TFLTransaction.Destroy;
-begin if FHandle <> nil then fl_transaction_free(FHandle); inherited; end;
+begin if FHandle <> nil then hk_transaction_free(FHandle); inherited; end;
 
 function TFLTransaction.Get(const Col, ID: string): TFLDocument;
-var H: PFL_Doc;
+var H: PHK_Doc;
 begin
-  H := fl_transaction_get(FDBHandle, FHandle, PChar(Col), PChar(ID));
+  H := hk_transaction_get(FDBHandle, FHandle, PChar(Col), PChar(ID));
   if H = nil then Exit(nil);
   Result := TFLDocument.CreateFromHandle(H, True);
 end;
 
 procedure TFLTransaction.SetDoc(const Col, ID: string; Doc: TFLDocument);
-begin CheckStatus(fl_transaction_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'TxSet'); end;
+begin CheckStatus(hk_transaction_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'TxSet'); end;
 
 procedure TFLTransaction.Commit;
-begin CheckStatus(fl_transaction_commit(FDBHandle, FHandle), 'TxCommit'); end;
+begin CheckStatus(hk_transaction_commit(FDBHandle, FHandle), 'TxCommit'); end;
 
 { TFLQuery }
 
@@ -758,97 +758,97 @@ var I: Integer; begin FSelectFields.Clear; for I := Low(Fields) to High(Fields) 
 function TFLQuery.BuildNativeQuery: PFL_Query;
 var I, J: Integer; TmpArr: PFL_Array;
 begin
-  Result := fl_query_new(PChar(FCollection));
+  Result := hk_query_new(PChar(FCollection));
   try
     for I := Low(FWhereStr) to High(FWhereStr) do begin
-      if FWhereStr[I].Op = 'match' then fl_query_where_match(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'match_prefix' then fl_query_where_match_prefix(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'contains' then fl_query_where_contains(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'starts_with' then fl_query_where_starts_with(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'ne' then fl_query_where_ne_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'gt' then fl_query_where_gt_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'gte' then fl_query_where_gte_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'lt' then fl_query_where_lt_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'lte' then fl_query_where_lte_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else if FWhereStr[I].Op = 'array_contains' then fl_query_where_array_contains(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
-      else fl_query_where_eq_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value));
+      if FWhereStr[I].Op = 'match' then hk_query_where_match(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'match_prefix' then hk_query_where_match_prefix(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'contains' then hk_query_where_contains(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'starts_with' then hk_query_where_starts_with(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'ne' then hk_query_where_ne_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'gt' then hk_query_where_gt_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'gte' then hk_query_where_gte_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'lt' then hk_query_where_lt_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'lte' then hk_query_where_lte_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else if FWhereStr[I].Op = 'array_contains' then hk_query_where_array_contains(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value))
+      else hk_query_where_eq_str(Result, PChar(FWhereStr[I].Field), PChar(FWhereStr[I].Value));
     end;
     for I := Low(FWhereInt) to High(FWhereInt) do begin
-      if FWhereInt[I].Op = 'ne' then fl_query_where_ne_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
-      else if FWhereInt[I].Op = 'gt' then fl_query_where_gt_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
-      else if FWhereInt[I].Op = 'gte' then fl_query_where_gte_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
-      else if FWhereInt[I].Op = 'lt' then fl_query_where_lt_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
-      else if FWhereInt[I].Op = 'lte' then fl_query_where_lte_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
-      else fl_query_where_eq_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value);
+      if FWhereInt[I].Op = 'ne' then hk_query_where_ne_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
+      else if FWhereInt[I].Op = 'gt' then hk_query_where_gt_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
+      else if FWhereInt[I].Op = 'gte' then hk_query_where_gte_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
+      else if FWhereInt[I].Op = 'lt' then hk_query_where_lt_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
+      else if FWhereInt[I].Op = 'lte' then hk_query_where_lte_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value)
+      else hk_query_where_eq_int(Result, PChar(FWhereInt[I].Field), FWhereInt[I].Value);
     end;
     for I := Low(FWhereBool) to High(FWhereBool) do begin
-      fl_query_where_eq_bool(Result, PChar(FWhereBool[I].Field), FWhereBool[I].Value);
+      hk_query_where_eq_bool(Result, PChar(FWhereBool[I].Field), FWhereBool[I].Value);
     end;
     for I := Low(FWhereOrStr) to High(FWhereOrStr) do begin
-      fl_query_where_or_str(Result, PChar(FWhereOrStr[I].Field), PChar(FWhereOrStr[I].Value));
+      hk_query_where_or_str(Result, PChar(FWhereOrStr[I].Field), PChar(FWhereOrStr[I].Value));
     end;
     for I := Low(FWhereOrInt) to High(FWhereOrInt) do begin
-      fl_query_where_or_int(Result, PChar(FWhereOrInt[I].Field), FWhereOrInt[I].Value);
+      hk_query_where_or_int(Result, PChar(FWhereOrInt[I].Field), FWhereOrInt[I].Value);
     end;
     for I := Low(FWhereIn) to High(FWhereIn) do begin
-      TmpArr := fl_array_new;
+      TmpArr := hk_array_new;
       for J := 0 to FWhereIn[I].Data.Count-1 do
-        if FWhereIn[I].Data.Items[J].JSONType = jtNumber then fl_array_append_int(TmpArr, FWhereIn[I].Data.Items[J].AsInt64)
-        else fl_array_append_str(TmpArr, PChar(FWhereIn[I].Data.Items[J].AsString));
-      fl_query_where_in(Result, PChar(FWhereIn[I].Field), TmpArr);
+        if FWhereIn[I].Data.Items[J].JSONType = jtNumber then hk_array_append_int(TmpArr, FWhereIn[I].Data.Items[J].AsInt64)
+        else hk_array_append_str(TmpArr, PChar(FWhereIn[I].Data.Items[J].AsString));
+      hk_query_where_in(Result, PChar(FWhereIn[I].Field), TmpArr);
     end;
     for I := Low(FWhereNotIn) to High(FWhereNotIn) do begin
-      TmpArr := fl_array_new;
+      TmpArr := hk_array_new;
       for J := 0 to FWhereNotIn[I].Data.Count-1 do
-        if FWhereNotIn[I].Data.Items[J].JSONType = jtNumber then fl_array_append_int(TmpArr, FWhereNotIn[I].Data.Items[J].AsInt64)
-        else fl_array_append_str(TmpArr, PChar(FWhereNotIn[I].Data.Items[J].AsString));
-      fl_query_where_not_in(Result, PChar(FWhereNotIn[I].Field), TmpArr);
+        if FWhereNotIn[I].Data.Items[J].JSONType = jtNumber then hk_array_append_int(TmpArr, FWhereNotIn[I].Data.Items[J].AsInt64)
+        else hk_array_append_str(TmpArr, PChar(FWhereNotIn[I].Data.Items[J].AsString));
+      hk_query_where_not_in(Result, PChar(FWhereNotIn[I].Field), TmpArr);
     end;
     for I := Low(FWhereArrayContainsAny) to High(FWhereArrayContainsAny) do begin
-      TmpArr := fl_array_new;
+      TmpArr := hk_array_new;
       for J := 0 to FWhereArrayContainsAny[I].Data.Count-1 do
-        if FWhereArrayContainsAny[I].Data.Items[J].JSONType = jtNumber then fl_array_append_int(TmpArr, FWhereArrayContainsAny[I].Data.Items[J].AsInt64)
-        else fl_array_append_str(TmpArr, PChar(FWhereArrayContainsAny[I].Data.Items[J].AsString));
-      fl_query_where_array_contains_any(Result, PChar(FWhereArrayContainsAny[I].Field), TmpArr);
+        if FWhereArrayContainsAny[I].Data.Items[J].JSONType = jtNumber then hk_array_append_int(TmpArr, FWhereArrayContainsAny[I].Data.Items[J].AsInt64)
+        else hk_array_append_str(TmpArr, PChar(FWhereArrayContainsAny[I].Data.Items[J].AsString));
+      hk_query_where_array_contains_any(Result, PChar(FWhereArrayContainsAny[I].Field), TmpArr);
     end;
     
-    if FStartAt <> nil then fl_query_start_at(Result, FStartAt);
-    if FStartAfter <> nil then fl_query_start_after(Result, FStartAfter);
-    if FStartAfterRaw <> nil then fl_query_start_after_raw(Result, FStartAfterRaw);
-    if FEndAt <> nil then fl_query_end_at(Result, FEndAt);
-    if FEndBefore <> nil then fl_query_end_before(Result, FEndBefore);
+    if FStartAt <> nil then hk_query_start_at(Result, FStartAt);
+    if FStartAfter <> nil then hk_query_start_after(Result, FStartAfter);
+    if FStartAfterRaw <> nil then hk_query_start_after_raw(Result, FStartAfterRaw);
+    if FEndAt <> nil then hk_query_end_at(Result, FEndAt);
+    if FEndBefore <> nil then hk_query_end_before(Result, FEndBefore);
 
-    if FOrderByField <> '' then fl_query_order_by(Result, PChar(FOrderByField), FOrderByAsc);
-    if FHasLimit then fl_query_limit(Result, FLimit);
-    if FHasOffset then fl_query_offset(Result, FOffset);
-    for I := 0 to FSelectFields.Count - 1 do fl_query_select_field(Result, PChar(FSelectFields[I]));
-if FDeferBlobs then fl_query_defer_blobs(Result, 1);
-  except fl_query_free(Result); raise; end;
+    if FOrderByField <> '' then hk_query_order_by(Result, PChar(FOrderByField), FOrderByAsc);
+    if FHasLimit then hk_query_limit(Result, FLimit);
+    if FHasOffset then hk_query_offset(Result, FOffset);
+    for I := 0 to FSelectFields.Count - 1 do hk_query_select_field(Result, PChar(FSelectFields[I]));
+if FDeferBlobs then hk_query_defer_blobs(Result, 1);
+  except hk_query_free(Result); raise; end;
 end;
 
 function TFLQuery.Count: Int64;
 var Q: PFL_Query; J: TJSONObject; begin
-  Q := BuildNativeQuery; try fl_query_aggregate_count(Q);
-  J := TJSONObject(TJSONParser.Create(ConsumeCString(fl_query_execute_aggregation(FDB.Handle, Q))).Parse);
-  Result := J.Get('count', 0); J.Free; finally fl_query_free(Q); end;
+  Q := BuildNativeQuery; try hk_query_aggregate_count(Q);
+  J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
+  Result := J.Get('count', 0); J.Free; finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.Sum(const Field: string): Double;
 var Q: PFL_Query; J: TJSONObject; begin
-  Q := BuildNativeQuery; try fl_query_aggregate_sum(Q, PChar(Field));
-  J := TJSONObject(TJSONParser.Create(ConsumeCString(fl_query_execute_aggregation(FDB.Handle, Q))).Parse);
-  Result := J.Get('sum_'+Field, 0.0); J.Free; finally fl_query_free(Q); end;
+  Q := BuildNativeQuery; try hk_query_aggregate_sum(Q, PChar(Field));
+  J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
+  Result := J.Get('sum_'+Field, 0.0); J.Free; finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.Avg(const Field: string): Double;
 var Q: PFL_Query; J: TJSONObject; begin
-  Q := BuildNativeQuery; try fl_query_aggregate_avg(Q, PChar(Field));
-  J := TJSONObject(TJSONParser.Create(ConsumeCString(fl_query_execute_aggregation(FDB.Handle, Q))).Parse);
-  Result := J.Get('avg_'+Field, 0.0); J.Free; finally fl_query_free(Q); end;
+  Q := BuildNativeQuery; try hk_query_aggregate_avg(Q, PChar(Field));
+  J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
+  Result := J.Get('avg_'+Field, 0.0); J.Free; finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.GetJSON: string;
-var Q: PFL_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(fl_query_execute(FDB.Handle, Q)); finally fl_query_free(Q); end; end;
+var Q: PFL_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
 
 { TFLRawDoc }
 
@@ -858,7 +858,7 @@ begin FDB := ADB; FHandle := AHandle; end;
 function TFLRawDoc.Id: string;
 var P: PChar; L: SizeUInt;
 begin
-  P := fl_rawdoc_id(FHandle, @L);
+  P := hk_rawdoc_id(FHandle, @L);
   if (P = nil) or (L = 0) then Exit('');
   SetString(Result, P, L);
 end;
@@ -866,17 +866,17 @@ end;
 function TFLRawDoc.Bytes: TBytes;
 var P: PByte; L: SizeUInt;
 begin
-  P := fl_rawdoc_bytes(FHandle, @L);
+  P := hk_rawdoc_bytes(FHandle, @L);
   if P = nil then Exit(nil);
   SetLength(Result, L);
   if L > 0 then Move(P^, Result[0], L);
 end;
 
 function TFLRawDoc.Resolve(const Collection: string): TFLDocument;
-var H: PFL_Doc;
+var H: PHK_Doc;
 begin
-  H := fl_rawdoc_to_doc(FDB.Handle, FHandle, PChar(Collection));
-  if H = nil then raise EFireLiteError.Create('fl_rawdoc_to_doc failed: ' + string(fl_last_error));
+  H := hk_rawdoc_to_doc(FDB.Handle, FHandle, PChar(Collection));
+  if H = nil then raise EFireLiteError.Create('hk_rawdoc_to_doc failed: ' + string(hk_last_error));
   Result := TFLDocument.CreateFromHandle(H, True);
 end;
 
@@ -889,18 +889,18 @@ destructor TFLRawResultSet.Destroy;
 begin Free; inherited; end;
 
 function TFLRawResultSet.Count: NativeUInt;
-begin Result := fl_rawresult_count(FHandle); end;
+begin Result := hk_rawresult_count(FHandle); end;
 
 function TFLRawResultSet.Get(Index: NativeUInt): TFLRawDoc;
 var H: PFL_RawDoc;
 begin
-  H := fl_rawresult_get(FHandle, Index);
+  H := hk_rawresult_get(FHandle, Index);
   if H = nil then raise EFireLiteError.Create('raw row out of range');
   Result := TFLRawDoc.CreateBorrowed(FDB, H);
 end;
 
 procedure TFLRawResultSet.Free;
-begin if FHandle <> nil then begin fl_rawresult_free(FHandle); FHandle := nil; end; end;
+begin if FHandle <> nil then begin hk_rawresult_free(FHandle); FHandle := nil; end; end;
 
 function TFLQuery.StartAfterRaw(ARaw: TFLRawDoc): TFLQuery;
 begin FStartAfterRaw := ARaw.Handle; Result := Self; end;
@@ -909,28 +909,28 @@ function TFLQuery.ExecuteRaw: TFLRawResultSet;
 var Q: PFL_Query; H: PFL_RawResultSet;
 begin
   Q := BuildNativeQuery; try
-    H := fl_query_execute_raw(FDB.Handle, Q);
-    if H = nil then raise EFireLiteError.Create('fl_query_execute_raw failed: ' + string(fl_last_error));
+    H := hk_query_execute_raw(FDB.Handle, Q);
+    if H = nil then raise EFireLiteError.Create('hk_query_execute_raw failed: ' + string(hk_last_error));
     Result := TFLRawResultSet.Create(FDB, H);
-  finally fl_query_free(Q); end;
+  finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.Walk(Callback: TFL_WalkCallback; UserData: Pointer): Int64;
 var Q: PFL_Query;
 begin
   Q := BuildNativeQuery; try
-    Result := fl_cursor_walk(FDB.Handle, Q, Callback, UserData);
-    if Result < 0 then raise EFireLiteError.Create('fl_cursor_walk failed: ' + string(fl_last_error));
-  finally fl_query_free(Q); end;
+    Result := hk_cursor_walk(FDB.Handle, Q, Callback, UserData);
+    if Result < 0 then raise EFireLiteError.Create('hk_cursor_walk failed: ' + string(hk_last_error));
+  finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.WalkView(Callback: TFL_ViewWalkCallback; UserData: Pointer): Int64;
 var Q: PFL_Query;
 begin
   Q := BuildNativeQuery; try
-    Result := fl_cursor_walk_view(FDB.Handle, Q, Callback, UserData);
-    if Result < 0 then raise EFireLiteError.Create('fl_cursor_walk_view failed: ' + string(fl_last_error));
-  finally fl_query_free(Q); end;
+    Result := hk_cursor_walk_view(FDB.Handle, Q, Callback, UserData);
+    if Result < 0 then raise EFireLiteError.Create('hk_cursor_walk_view failed: ' + string(hk_last_error));
+  finally hk_query_free(Q); end;
 end;
 
 { TFLViewDoc }
@@ -939,32 +939,32 @@ constructor TFLViewDoc.Create(AHandle: PFL_ViewDoc);
 begin FHandle := AHandle; end;
 
 destructor TFLViewDoc.Destroy;
-begin if FHandle <> nil then fl_view_free(FHandle); inherited; end;
+begin if FHandle <> nil then hk_view_free(FHandle); inherited; end;
 
 function TFLViewDoc.FieldCount: NativeUInt;
-begin Result := fl_view_field_count(FHandle); end;
+begin Result := hk_view_field_count(FHandle); end;
 
 function TFLViewDoc.HasField(const Key: string): Boolean;
-begin Result := fl_view_has_field(FHandle, PChar(Key)); end;
+begin Result := hk_view_has_field(FHandle, PChar(Key)); end;
 
 function TFLViewDoc.GetInt(const Key: string; out Value: Int64): Boolean;
 var V: Int64;
 begin
-  Result := fl_view_get_int(FHandle, PChar(Key), @V);
+  Result := hk_view_get_int(FHandle, PChar(Key), @V);
   if Result then Value := V;
 end;
 
 function TFLViewDoc.GetFloat(const Key: string; out Value: Double): Boolean;
 var V: Double;
 begin
-  Result := fl_view_get_float(FHandle, PChar(Key), @V);
+  Result := hk_view_get_float(FHandle, PChar(Key), @V);
   if Result then Value := V;
 end;
 
 function TFLViewDoc.GetBool(const Key: string; out Value: Boolean): Boolean;
 var R: cint32;
 begin
-  R := fl_view_get_bool(FHandle, PChar(Key));
+  R := hk_view_get_bool(FHandle, PChar(Key));
   Result := R >= 0;
   if Result then Value := R <> 0;
 end;
@@ -972,7 +972,7 @@ end;
 function TFLViewDoc.GetStr(const Key: string): string;
 var P: PChar; L: SizeUInt;
 begin
-  P := fl_view_get_str(FHandle, PChar(Key), @L);
+  P := hk_view_get_str(FHandle, PChar(Key), @L);
   if (P = nil) or (L = 0) then Exit('');
   SetString(Result, P, L);
 end;
@@ -980,17 +980,17 @@ end;
 function TFLViewDoc.GetBytes(const Key: string): TBytes;
 var P: PByte; L: SizeUInt;
 begin
-  P := fl_view_get_bytes(FHandle, PChar(Key), @L);
+  P := hk_view_get_bytes(FHandle, PChar(Key), @L);
   if P = nil then Exit(nil);
   SetLength(Result, L);
   if L > 0 then Move(P^, Result[0], L);
 end;
 
 function TFLViewDoc.ToDoc(const DocID: string): TFLDocument;
-var H: PFL_Doc;
+var H: PHK_Doc;
 begin
-  H := fl_view_to_doc(FHandle, PChar(DocID));
-  if H = nil then raise EFireLiteError.Create('fl_view_to_doc failed: ' + string(fl_last_error));
+  H := hk_view_to_doc(FHandle, PChar(DocID));
+  if H = nil then raise EFireLiteError.Create('hk_view_to_doc failed: ' + string(hk_last_error));
   Result := TFLDocument.CreateFromHandle(H, True);
 end;
 
@@ -1014,24 +1014,24 @@ function TFLQuery.Delete: Int64;
 var Q: PFL_Query;
 begin
   Q := BuildNativeQuery; try
-    Result := fl_query_delete(FDB.Handle, Q);
-  finally fl_query_free(Q); end;
+    Result := hk_query_delete(FDB.Handle, Q);
+  finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.DeleteLocal: Int64;
 var Q: PFL_Query;
 begin
   Q := BuildNativeQuery; try
-    Result := fl_query_delete_local(FDB.Handle, Q);
-  finally fl_query_free(Q); end;
+    Result := hk_query_delete_local(FDB.Handle, Q);
+  finally hk_query_free(Q); end;
 end;
 
 function TFLQuery.Patch(Doc: TFLDocument): Int64;
 var Q: PFL_Query;
 begin
   Q := BuildNativeQuery; try
-    Result := fl_query_patch(FDB.Handle, Q, Doc.Handle);
-  finally fl_query_free(Q); end;
+    Result := hk_query_patch(FDB.Handle, Q, Doc.Handle);
+  finally hk_query_free(Q); end;
 end;
 
 type
@@ -1116,25 +1116,25 @@ end;
 
 procedure TFLDocumentRef.SetDoc(const Doc: TFLDocument);
 begin
-  CheckStatus(fl_engine_insert(FDB.Handle, PChar(FCollection), PChar(FDocID), Doc.Handle), 'DocRefSet');
+  CheckStatus(hk_engine_insert(FDB.Handle, PChar(FCollection), PChar(FDocID), Doc.Handle), 'DocRefSet');
 end;
 
 function TFLDocumentRef.Get: TFLDocument;
-var H: PFL_Doc;
+var H: PHK_Doc;
 begin
-  H := fl_engine_get(FDB.Handle, PChar(FCollection), PChar(FDocID));
+  H := hk_engine_get(FDB.Handle, PChar(FCollection), PChar(FDocID));
   if H = nil then Exit(nil);
   Result := TFLDocument.CreateFromHandle(H, True);
 end;
 
 procedure TFLDocumentRef.Delete;
 begin
-  CheckStatus(fl_engine_delete(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDelete');
+  CheckStatus(hk_engine_delete(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDelete');
 end;
 
 procedure TFLDocumentRef.DeleteLocal;
 begin
-  CheckStatus(fl_engine_delete_local(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDeleteLocal');
+  CheckStatus(hk_engine_delete_local(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDeleteLocal');
 end;
 
 { TFLCollection }
@@ -1152,30 +1152,30 @@ function TFLCollection.Limit(ACount: NativeUInt): TFLQuery; begin Result := Quer
 constructor TFLNetSyncer.Create(ADBHandle: PFL_Engine; const Name, RoomKey: string);
 begin
   inherited Create;
-  FHandle := fl_net_syncer_new(ADBHandle, PChar(Name), PChar(RoomKey));
+  FHandle := hk_net_syncer_new(ADBHandle, PChar(Name), PChar(RoomKey));
   if FHandle = nil then
-    raise Exception.Create('CreateNetSyncer failed: ' + string(fl_last_error));
+    raise Exception.Create('CreateNetSyncer failed: ' + string(hk_last_error));
 end;
 
 destructor TFLNetSyncer.Destroy;
 begin
-  if FHandle <> nil then fl_net_syncer_free(FHandle);
+  if FHandle <> nil then hk_net_syncer_free(FHandle);
   inherited;
 end;
 
 procedure TFLNetSyncer.Start(APort: Word);
 begin
-  CheckStatus(fl_net_syncer_start(FHandle, APort), 'NetSyncStart');
+  CheckStatus(hk_net_syncer_start(FHandle, APort), 'NetSyncStart');
 end;
 
 procedure TFLNetSyncer.SetDiscoveryMode(AMode: TFLDiscoveryMode);
 begin
-  CheckStatus(fl_net_syncer_set_discovery(FHandle, Ord(AMode)), 'NetSyncSetDiscovery');
+  CheckStatus(hk_net_syncer_set_discovery(FHandle, Ord(AMode)), 'NetSyncSetDiscovery');
 end;
 
 function TFLNetSyncer.StatusJSON: string;
 begin
-  Result := ConsumeCString(fl_net_syncer_status(FHandle));
+  Result := ConsumeCString(hk_net_syncer_status(FHandle));
 end;
 
 { TFLCloudSync }
@@ -1183,49 +1183,49 @@ end;
 constructor TFLCloudSync.Create(ADBHandle: PFL_Engine; Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
 begin
   inherited Create;
-  FHandle := fl_cloud_sync_new(ADBHandle, Ord(Mode), PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
+  FHandle := hk_cloud_sync_new(ADBHandle, Ord(Mode), PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
   if FHandle = nil then
-    raise Exception.Create('CreateCloudSyncer failed: ' + string(fl_last_error));
+    raise Exception.Create('CreateCloudSyncer failed: ' + string(hk_last_error));
 end;
 
 constructor TFLCloudSync.CreateServer(ADBHandle: PFL_Engine; const ServerID, AuthToken: string);
 begin
   inherited Create;
-  FHandle := fl_cloud_sync_server_new(ADBHandle, PChar(ServerID), PChar(AuthToken));
+  FHandle := hk_cloud_sync_server_new(ADBHandle, PChar(ServerID), PChar(AuthToken));
   if FHandle = nil then
-    raise Exception.Create('CreateCloudServerSyncer failed: ' + string(fl_last_error));
+    raise Exception.Create('CreateCloudServerSyncer failed: ' + string(hk_last_error));
 end;
 
 constructor TFLCloudSync.CreateClient(ADBHandle: PFL_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
 begin
   inherited Create;
-  FHandle := fl_cloud_sync_client_new(ADBHandle, PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
+  FHandle := hk_cloud_sync_client_new(ADBHandle, PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
   if FHandle = nil then
-    raise Exception.Create('CreateCloudClientSyncer failed: ' + string(fl_last_error));
+    raise Exception.Create('CreateCloudClientSyncer failed: ' + string(hk_last_error));
 end;
 
 destructor TFLCloudSync.Destroy;
 begin
-  if FHandle <> nil then fl_cloud_sync_free(FHandle);
+  if FHandle <> nil then hk_cloud_sync_free(FHandle);
   inherited;
 end;
 
 procedure TFLCloudSync.Start(const Address: string);
 begin
-  CheckStatus(fl_cloud_sync_start(FHandle, PChar(Address)), 'CloudSyncStart');
+  CheckStatus(hk_cloud_sync_start(FHandle, PChar(Address)), 'CloudSyncStart');
 end;
 
 function TFLCloudSync.StatusJSON: string;
 begin
-  Result := ConsumeCString(fl_cloud_sync_status(FHandle));
+  Result := ConsumeCString(hk_cloud_sync_status(FHandle));
 end;
 
 procedure TFLCloudSync.Stop;
 begin
-  fl_cloud_sync_stop(FHandle);
+  hk_cloud_sync_stop(FHandle);
 end;
-procedure TFLCollection.CreateIndex(const Field: string); begin CheckStatus(fl_engine_create_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateIndex'); end;
-procedure TFLCollection.CreateFTSIndex(const Field: string); begin CheckStatus(fl_engine_create_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateFTSIndex'); end;
+procedure TFLCollection.CreateIndex(const Field: string); begin CheckStatus(hk_engine_create_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateIndex'); end;
+procedure TFLCollection.CreateFTSIndex(const Field: string); begin CheckStatus(hk_engine_create_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateFTSIndex'); end;
 
 procedure TFLCollection.CreateCompositeIndex(const Fields: array of string);
 var I: Integer; S: string;
@@ -1236,17 +1236,17 @@ begin
     S := S + '{"field":"' + Fields[I] + '","desc":false}';
   end;
   S := S + ']';
-  CheckStatus(fl_engine_create_index(FDB.Handle, PChar(FName), PChar(S)), 'CreateCompositeIndex');
+  CheckStatus(hk_engine_create_index(FDB.Handle, PChar(FName), PChar(S)), 'CreateCompositeIndex');
 end;
 
 function TFLCollection.ListIndexes: string;
-begin Result := ConsumeCString(fl_engine_list_indexes(FDB.Handle, PChar(FName))); end;
+begin Result := ConsumeCString(hk_engine_list_indexes(FDB.Handle, PChar(FName))); end;
 
 { TFireLite }
 
-constructor TFireLite.Create(const DBPath: string); begin inherited Create; FHandle := fl_engine_open(PChar(DBPath)); end;
-constructor TFireLite.Create(const DBPath: string; AConfig: TFLConfig); begin inherited Create; FHandle := fl_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; end;
-destructor TFireLite.Destroy; begin if FHandle <> nil then fl_engine_free(FHandle); inherited; end;
+constructor TFireLite.Create(const DBPath: string); begin inherited Create; FHandle := hk_engine_open(PChar(DBPath)); end;
+constructor TFireLite.Create(const DBPath: string; AConfig: TFLConfig); begin inherited Create; FHandle := hk_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; end;
+destructor TFireLite.Destroy; begin if FHandle <> nil then hk_engine_free(FHandle); inherited; end;
 function TFireLite.Collection(const Name: string): TFLCollection; begin Result := TFLCollection.Create(Self, Name); end;
 function TFireLite.StartBatch: TFLBatch; begin Result := TFLBatch.Create(FHandle); end;
 function TFireLite.StartTransaction: TFLTransaction; begin Result := TFLTransaction.Create(FHandle); end;
@@ -1254,20 +1254,20 @@ procedure TFireLite.SetCollectionLocal(const ACollection: string; Local: Boolean
 var L: cint32;
 begin
   if Local then L := 1 else L := 0;
-  CheckStatus(fl_engine_set_collection_local(FHandle, PChar(ACollection), L), 'SetCollectionLocal');
+  CheckStatus(hk_engine_set_collection_local(FHandle, PChar(ACollection), L), 'SetCollectionLocal');
 end;
 procedure TFireLite.ReplicateKey(const ACollection, ADocID: string);
 begin
-  CheckStatus(fl_engine_replicate_key(FHandle, PChar(ACollection), PChar(ADocID)), 'ReplicateKey');
+  CheckStatus(hk_engine_replicate_key(FHandle, PChar(ACollection), PChar(ADocID)), 'ReplicateKey');
 end;
 procedure TFireLite.ReplicateCollection(const ACollection: string);
 begin
-  CheckStatus(fl_engine_replicate_collection(FHandle, PChar(ACollection)), 'ReplicateCollection');
+  CheckStatus(hk_engine_replicate_collection(FHandle, PChar(ACollection)), 'ReplicateCollection');
 end;
 function TFireLite.VacuumCollection(const ACollection: string): Integer;
 var R: cint32;
 begin
-  R := fl_engine_vacuum_collection(FHandle, PChar(ACollection));
+  R := hk_engine_vacuum_collection(FHandle, PChar(ACollection));
   if R < 0 then CheckStatus(R, 'VacuumCollection');
   Result := R;
 end;
@@ -1275,26 +1275,26 @@ function TFireLite.CreateNetSyncer(const Name, RoomKey: string): TFLNetSyncer; b
 function TFireLite.CreateCloudSyncer(Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.Create(FHandle, Mode, ClientID, RoomName, RoomKey, AuthToken); end;
 function TFireLite.CreateCloudServerSyncer(const ServerID, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.CreateServer(FHandle, ServerID, AuthToken); end;
 function TFireLite.CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.CreateClient(FHandle, ClientID, RoomName, RoomKey, AuthToken); end;
-function TFireLite.Backup(const Path: string): Integer; begin Result := fl_engine_backup(FHandle, PChar(Path)); end;
-procedure TFireLite.Compact; begin CheckStatus(fl_engine_compact(FHandle), 'Compact'); end;
-function TFireLite.IsIndexesReady: Boolean; begin Result := fl_engine_is_indexes_ready(FHandle); end;
+function TFireLite.Backup(const Path: string): Integer; begin Result := hk_engine_backup(FHandle, PChar(Path)); end;
+procedure TFireLite.Compact; begin CheckStatus(hk_engine_compact(FHandle), 'Compact'); end;
+function TFireLite.IsIndexesReady: Boolean; begin Result := hk_engine_is_indexes_ready(FHandle); end;
 
 function TFireLite.GetView(const Col, ID: string): TFLViewDoc;
 var H: PFL_ViewDoc;
 begin
-  H := fl_view_get(FHandle, PChar(Col), PChar(ID));
+  H := hk_view_get(FHandle, PChar(Col), PChar(ID));
   if H = nil then Exit(nil);
   Result := TFLViewDoc.Create(H);
 end;
-procedure TFireLite.SnapshotIndices; begin CheckStatus(fl_engine_snapshot_indices(FHandle), 'SnapshotIndices'); end;
-function TFireLite.ListIndexes(const ACollection: string): string; begin Result := ConsumeCString(fl_engine_list_indexes(FHandle, PChar(ACollection))); end;
-function TFireLite.GetAuditLog: string; begin Result := ConsumeCString(fl_engine_get_audit_log(FHandle)); end;
+procedure TFireLite.SnapshotIndices; begin CheckStatus(hk_engine_snapshot_indices(FHandle), 'SnapshotIndices'); end;
+function TFireLite.ListIndexes(const ACollection: string): string; begin Result := ConsumeCString(hk_engine_list_indexes(FHandle, PChar(ACollection))); end;
+function TFireLite.GetAuditLog: string; begin Result := ConsumeCString(hk_engine_get_audit_log(FHandle)); end;
 function TFireLite.InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: TFLDocument): Integer;
-begin Result := fl_engine_insert_subdoc(FHandle, PChar(Col), PChar(ID), PChar(SubCol), PChar(SubID), Doc.Handle); end;
+begin Result := hk_engine_insert_subdoc(FHandle, PChar(Col), PChar(ID), PChar(SubCol), PChar(SubID), Doc.Handle); end;
 function TFireLite.GetByRef(Doc: TFLDocument; const FieldKey: string): TFLDocument;
-var H: PFL_Doc;
+var H: PHK_Doc;
 begin
-  H := fl_engine_get_by_ref(FHandle, Doc.Handle, PChar(FieldKey));
+  H := hk_engine_get_by_ref(FHandle, Doc.Handle, PChar(FieldKey));
   if H = nil then Exit(nil);
   Result := TFLDocument.CreateFromHandle(H, True);
 end;
@@ -1307,9 +1307,9 @@ begin
     S := S + '{"field":"' + Fields[I] + '","desc":false}';
   end;
   S := S + ']';
-  CheckStatus(fl_engine_create_index(FHandle, PChar(ACollection), PChar(S)), 'CreateCompositeIndex');
+  CheckStatus(hk_engine_create_index(FHandle, PChar(ACollection), PChar(S)), 'CreateCompositeIndex');
 end;
-function TFireLite.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(fl_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
-function TFireLite.GetStats: string; begin Result := ConsumeCString(fl_engine_get_stats(FHandle)); end;
+function TFireLite.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
+function TFireLite.GetStats: string; begin Result := ConsumeCString(hk_engine_get_stats(FHandle)); end;
 
 end.

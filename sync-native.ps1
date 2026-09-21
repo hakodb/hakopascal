@@ -22,10 +22,8 @@ if ($CoreDir -ne "") {
     Copy-Item $dll $Native -Force
     Write-Output "synced from checkout: $CoreDir"
 } elseif ($Tag -ne "") {
-    $zip = Join-Path $env:TEMP "firelite-$Tag-windows.zip"
-    Invoke-WebRequest -Uri "https://github.com/rizaptk/firelite/releases/download/$Tag/firelite-$Tag-x86_64-pc-windows-msvc.zip" -OutFile $zip
-    Expand-Archive -Path $zip -DestinationPath $env:TEMP\firelite-rel -Force
-    Copy-Item $env:TEMP\firelite-rel\firelite.dll $Native -Force
+    $base = "https://github.com/rizaptk/firelite/releases/download/$Tag"
+    Invoke-WebRequest -Uri "$base/hakodb-x86_64-pc-windows-msvc.dll" -OutFile (Join-Path $Native "hakodb.dll")
     Write-Output "synced from release asset: $Tag"
 } else {
     throw "pass -CoreDir or -Tag"
