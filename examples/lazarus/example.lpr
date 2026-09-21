@@ -1,8 +1,8 @@
 program example;
 
-{ FireLite Lazarus minimal demo.
+{ Hako Lazarus minimal demo.
   Open example.lpi in Lazarus (or run: lazbuild example.lpi), then press the
-  "Run demo" button. Demonstrates the TFireLiteComponent dropped on a form
+  "Run demo" button. Demonstrates the THakoComponent dropped on a form
   plus NetSync / CloudSync configuration from the Object Inspector.
 }
 

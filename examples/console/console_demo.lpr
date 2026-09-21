@@ -1,12 +1,12 @@
 program console_demo;
 
-{ FireLite embedded document database - Pascal (FPC) console example.
+{ Hako embedded document database - Pascal (FPC) console example.
 
   Compile (from this directory):
     fpc -Fu../.. console_demo.lpr
 
-  Run (make sure the FireLite shared library is findable):
-    Windows : copy ..\..\native\firelite.dll  (next to console_demo.exe)
+  Run (make sure the Hako shared library is findable):
+    Windows : copy ..\..\native\hakodb.dll  (next to console_demo.exe)
     Linux   : LD_LIBRARY_PATH=../../native ./console_demo
     macOS   : DYLD_LIBRARY_PATH=../../native ./console_demo
 
@@ -17,24 +17,24 @@ program console_demo;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, FireLite;
+  SysUtils, Hako;
 
 var
-  DB: TFireLite;
-  Users: TFLCollection;
-  Ref: TFLDocumentRef;
-  Doc, Got: TFLDocument;
-  Q: TFLQuery;
-  Batch: TFLBatch;
-  Tx: TFLTransaction;
-  Syncer: TFLNetSyncer;
+  DB: THako;
+  Users: THKCollection;
+  Ref: THKDocumentRef;
+  Doc, Got: THKDocument;
+  Q: THKQuery;
+  Batch: THKBatch;
+  Tx: THKTransaction;
+  Syncer: THKNetSyncer;
 begin
-  DB := TFireLite.Create('demo.db');
+  DB := THako.Create('demo.db');
   try
     Users := DB.Collection('users');
     try
       { --- Insert a document --- }
-      Doc := TFLDocument.Create;
+      Doc := THKDocument.Create;
       try
         Doc.InsertStr('name', 'Alice').InsertInt('age', 32).InsertBool('active', True);
         Ref := Users.Doc('u1');
@@ -80,7 +80,7 @@ begin
       { --- Atomic batch --- }
       Batch := DB.StartBatch;
       try
-        Doc := TFLDocument.Create;
+        Doc := THKDocument.Create;
         try
           Doc.InsertStr('name', 'Bob').InsertInt('age', 27);
           Batch.SetDoc('users', 'u2', Doc);

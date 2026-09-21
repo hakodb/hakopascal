@@ -1,6 +1,6 @@
 unit example_main;
 
-{ FireLite Lazarus minimal demo form. }
+{ Hako Lazarus minimal demo form. }
 
 {$mode objfpc}{$H+}
 
@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  FireLite, FireLiteComponent;
+  Hako, HakoComponent;
 
 type
 
@@ -16,7 +16,7 @@ type
 
   TForm1 = class(TForm)
     btnRun: TButton;
-    FireLite1: TFireLiteComponent;
+    Hako1: THakoComponent;
     Memo1: TMemo;
     procedure btnRunClick(Sender: TObject);
   end;
@@ -32,20 +32,20 @@ implementation
 
 procedure TForm1.btnRunClick(Sender: TObject);
 var
-  Users: TFLCollection;
-  Ref: TFLDocumentRef;
-  Doc, Got: TFLDocument;
-  Q: TFLQuery;
+  Users: THKCollection;
+  Ref: THKDocumentRef;
+  Doc, Got: THKDocument;
+  Q: THKQuery;
 begin
   Memo1.Lines.Clear;
   try
-    if not FireLite1.IsOpen then
-      FireLite1.Open;
-    Memo1.Lines.Add('opened ' + FireLite1.DatabasePath);
+    if not Hako1.IsOpen then
+      Hako1.Open;
+    Memo1.Lines.Add('opened ' + Hako1.DatabasePath);
 
-    Users := FireLite1.Collection('users');
+    Users := Hako1.Collection('users');
     try
-      Doc := TFLDocument.Create;
+      Doc := THKDocument.Create;
       try
         Doc.InsertStr('name', 'Alice').InsertInt('age', 32).InsertBool('active', True);
         Ref := Users.Doc('u1');
@@ -84,10 +84,10 @@ begin
     { NetSync + CloudSync are configured via the Object Inspector
       (NetSyncName / NetSyncRoomKey / NetSyncPort / CloudSync*) and started
       with one call each. Requires the net-sync/cloud-sync feature build. }
-    // FireLite1.StartNetSync;
-    // FireLite1.StartCloudSync;
+    // Hako1.StartNetSync;
+    // Hako1.StartCloudSync;
 
-    Memo1.Lines.Add('stats: ' + FireLite1.GetStats);
+    Memo1.Lines.Add('stats: ' + Hako1.GetStats);
     Memo1.Lines.Add('done');
   except
     on E: Exception do

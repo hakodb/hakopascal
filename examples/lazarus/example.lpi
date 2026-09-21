@@ -9,7 +9,7 @@
         <MainUnitHasScaledStatement Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="FireLiteLazarusDemo"/>
+      <Title Value="HakoLazarusDemo"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -38,7 +38,7 @@
       <Unit1>
         <Filename Value="example.lpr"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="FireLiteLazarusDemo"/>
+        <ComponentName Value="HakoLazarusDemo"/>
         <ResourceBaseClass Value="Program"/>
       </Unit1>
     </Units>

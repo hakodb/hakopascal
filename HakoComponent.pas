@@ -1,19 +1,19 @@
-unit FireLiteComponent;
+unit HakoComponent;
 
-{ FireLite for Lazarus
+{ Hako for Lazarus
   =====================
 
-  TFireLiteComponent is a drop-on-form (or drop-on-datamodule) TComponent
-  wrapper around the high-level TFireLite engine. It exposes the most common
-  settings as published properties so you can configure a FireLite database
+  THakoComponent is a drop-on-form (or drop-on-datamodule) TComponent
+  wrapper around the high-level THako engine. It exposes the most common
+  settings as published properties so you can configure a Hako database
   from the Object Inspector with no code.
 
   It also exposes the NetSync and CloudSync configuration so you can start
   LAN / Cloud replication with a single method call.
 
   Runtime usage (no form needed):
-    var C: TFireLiteComponent;
-    C := TFireLiteComponent.Create(nil);
+    var C: THakoComponent;
+    C := THakoComponent.Create(nil);
     C.DatabasePath := 'app.db';
     C.Open;
     C.Collection('users').Doc('u1').SetDoc(Doc);
@@ -28,29 +28,29 @@ unit FireLiteComponent;
 interface
 
 uses
-  Classes, FireLite;
+  Classes, Hako;
 
 type
 
-  { TFireLiteComponent : lazarus component wrapper around TFireLite }
-  TFireLiteComponent = class(TComponent)
+  { THakoComponent : lazarus component wrapper around THako }
+  THakoComponent = class(TComponent)
   private
     FDatabasePath: string;
     FNetSyncEnabled: Boolean;
     FNetSyncName: string;
     FNetSyncRoomKey: string;
     FNetSyncPort: Word;
-    FNetSyncDiscovery: TFLDiscoveryMode;
+    FNetSyncDiscovery: THKDiscoveryMode;
     FCloudSyncEnabled: Boolean;
-    FCloudSyncMode: TFLCloudSyncMode;
+    FCloudSyncMode: THKCloudSyncMode;
     FCloudSyncClientID: string;
     FCloudSyncRoomName: string;
     FCloudSyncRoomKey: string;
     FCloudSyncAuthToken: string;
     FCloudSyncAddress: string;
-    FLite: TFireLite;
-    FNetSyncer: TFLNetSyncer;
-    FCloudSyncer: TFLCloudSync;
+    FLite: THako;
+    FNetSyncer: THKNetSyncer;
+    FCloudSyncer: THKCloudSync;
     FOpened: Boolean;
     procedure EnsureOpen;
   public
@@ -64,7 +64,7 @@ type
     { True once Open() has been called successfully. }
     property IsOpen: Boolean read FOpened;
     { The underlying high-level engine. }
-    property Lite: TFireLite read FLite;
+    property Lite: THako read FLite;
 
     { Start LAN (net-sync) replication using NetSyncName / NetSyncRoomKey / NetSyncPort. }
     procedure StartNetSync;
@@ -76,20 +76,20 @@ type
     procedure StopCloudSync;
 
     { Create a standalone NetSyncer (not tied to the published properties). }
-    function CreateNetSyncer(const AName, ARoomKey: string): TFLNetSyncer;
+    function CreateNetSyncer(const AName, ARoomKey: string): THKNetSyncer;
     { Create a standalone CloudSyncer (not tied to the published properties). }
-    function CreateCloudSyncer(AMode: TFLCloudSyncMode; const AClientID, ARoomName, ARoomKey, AAuthToken: string): TFLCloudSync;
+    function CreateCloudSyncer(AMode: THKCloudSyncMode; const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
     { Create a room-agnostic cloud SERVER (not tied to the published properties). }
-    function CreateCloudServerSyncer(const AServerID, AAuthToken: string): TFLCloudSync;
+    function CreateCloudServerSyncer(const AServerID, AAuthToken: string): THKCloudSync;
     { Create an offline-first cloud CLIENT for a room (not tied to the published properties). }
-    function CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): TFLCloudSync;
+    function CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
 
-    function Collection(const AName: string): TFLCollection;
+    function Collection(const AName: string): THKCollection;
     function ListCollections: TStringList;
     function GetStats: string;
     procedure Compact;
   published
-    { Path to the FireLite database file. }
+    { Path to the Hako database file. }
     property DatabasePath: string read FDatabasePath write FDatabasePath;
 
     { --- NetSync (LAN replication) configuration --- }
@@ -98,12 +98,12 @@ type
     property NetSyncName: string read FNetSyncName write FNetSyncName;
     property NetSyncRoomKey: string read FNetSyncRoomKey write FNetSyncRoomKey;
     property NetSyncPort: Word read FNetSyncPort write FNetSyncPort default 4456;
-    property NetSyncDiscovery: TFLDiscoveryMode read FNetSyncDiscovery write FNetSyncDiscovery default dmMdns;
+    property NetSyncDiscovery: THKDiscoveryMode read FNetSyncDiscovery write FNetSyncDiscovery default dmMdns;
 
     { --- CloudSync configuration --- }
     { Master switch: the CloudSync* options below are inert until enabled. }
     property CloudSyncEnabled: Boolean read FCloudSyncEnabled write FCloudSyncEnabled default False;
-    property CloudSyncMode: TFLCloudSyncMode read FCloudSyncMode write FCloudSyncMode default csmClient;
+    property CloudSyncMode: THKCloudSyncMode read FCloudSyncMode write FCloudSyncMode default csmClient;
     property CloudSyncClientID: string read FCloudSyncClientID write FCloudSyncClientID;
     property CloudSyncRoomName: string read FCloudSyncRoomName write FCloudSyncRoomName;
     property CloudSyncRoomKey: string read FCloudSyncRoomKey write FCloudSyncRoomKey;
@@ -113,9 +113,9 @@ type
 
 implementation
 
-{ TFireLiteComponent }
+{ THakoComponent }
 
-constructor TFireLiteComponent.Create(AOwner: TComponent);
+constructor THakoComponent.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FNetSyncEnabled := False;
@@ -125,7 +125,7 @@ begin
   FCloudSyncMode := csmClient;
 end;
 
-destructor TFireLiteComponent.Destroy;
+destructor THakoComponent.Destroy;
 begin
   FNetSyncer.Free;
   FCloudSyncer.Free;
@@ -133,22 +133,22 @@ begin
   inherited Destroy;
 end;
 
-procedure TFireLiteComponent.EnsureOpen;
+procedure THakoComponent.EnsureOpen;
 begin
   if not FOpened then
-    raise EFireLiteError.Create('TFireLiteComponent.Open must be called first');
+    raise EHakoError.Create('THakoComponent.Open must be called first');
 end;
 
-procedure TFireLiteComponent.Open;
+procedure THakoComponent.Open;
 begin
   if FOpened then Exit;
   if FDatabasePath = '' then
-    raise EFireLiteError.Create('TFireLiteComponent.DatabasePath is empty');
-  FLite := TFireLite.Create(FDatabasePath);
+    raise EHakoError.Create('THakoComponent.DatabasePath is empty');
+  FLite := THako.Create(FDatabasePath);
   FOpened := True;
 end;
 
-procedure TFireLiteComponent.Close;
+procedure THakoComponent.Close;
 begin
   if not FOpened then Exit;
   FNetSyncer.Free;
@@ -160,91 +160,91 @@ begin
   FOpened := False;
 end;
 
-procedure TFireLiteComponent.StartNetSync;
+procedure THakoComponent.StartNetSync;
 begin
   EnsureOpen;
   if not FNetSyncEnabled then
-    raise EFireLiteError.Create('NetSyncEnabled is False: enable it before StartNetSync');
+    raise EHakoError.Create('NetSyncEnabled is False: enable it before StartNetSync');
   FNetSyncer.Free;
   FNetSyncer := FLite.CreateNetSyncer(FNetSyncName, FNetSyncRoomKey);
   FNetSyncer.SetDiscoveryMode(FNetSyncDiscovery);
   FNetSyncer.Start(FNetSyncPort);
 end;
 
-procedure TFireLiteComponent.StopNetSync;
+procedure THakoComponent.StopNetSync;
 begin
   FNetSyncer.Free;
   FNetSyncer := nil;
 end;
 
-procedure TFireLiteComponent.StartCloudSync;
+procedure THakoComponent.StartCloudSync;
 begin
   EnsureOpen;
   if not FCloudSyncEnabled then
-    raise EFireLiteError.Create('CloudSyncEnabled is False: enable it before StartCloudSync');
+    raise EHakoError.Create('CloudSyncEnabled is False: enable it before StartCloudSync');
   FCloudSyncer.Free;
   FCloudSyncer := FLite.CreateCloudSyncer(FCloudSyncMode, FCloudSyncClientID,
     FCloudSyncRoomName, FCloudSyncRoomKey, FCloudSyncAuthToken);
   FCloudSyncer.Start(FCloudSyncAddress);
 end;
 
-procedure TFireLiteComponent.StopCloudSync;
+procedure THakoComponent.StopCloudSync;
 begin
   FCloudSyncer.Free;
   FCloudSyncer := nil;
 end;
 
-function TFireLiteComponent.CreateNetSyncer(const AName, ARoomKey: string): TFLNetSyncer;
+function THakoComponent.CreateNetSyncer(const AName, ARoomKey: string): THKNetSyncer;
 begin
   EnsureOpen;
   Result := FLite.CreateNetSyncer(AName, ARoomKey);
 end;
 
-function TFireLiteComponent.CreateCloudSyncer(AMode: TFLCloudSyncMode;
-  const AClientID, ARoomName, ARoomKey, AAuthToken: string): TFLCloudSync;
+function THakoComponent.CreateCloudSyncer(AMode: THKCloudSyncMode;
+  const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
 begin
   EnsureOpen;
   Result := FLite.CreateCloudSyncer(AMode, AClientID, ARoomName, ARoomKey, AAuthToken);
 end;
 
-function TFireLiteComponent.CreateCloudServerSyncer(const AServerID, AAuthToken: string): TFLCloudSync;
+function THakoComponent.CreateCloudServerSyncer(const AServerID, AAuthToken: string): THKCloudSync;
 begin
   EnsureOpen;
   Result := FLite.CreateCloudServerSyncer(AServerID, AAuthToken);
 end;
 
-function TFireLiteComponent.CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): TFLCloudSync;
+function THakoComponent.CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
 begin
   EnsureOpen;
   Result := FLite.CreateCloudClientSyncer(AClientID, ARoomName, ARoomKey, AAuthToken);
 end;
 
-function TFireLiteComponent.Collection(const AName: string): TFLCollection;
+function THakoComponent.Collection(const AName: string): THKCollection;
 begin
   EnsureOpen;
   Result := FLite.Collection(AName);
 end;
 
-function TFireLiteComponent.ListCollections: TStringList;
+function THakoComponent.ListCollections: TStringList;
 begin
   EnsureOpen;
   Result := FLite.ListCollections;
 end;
 
-function TFireLiteComponent.GetStats: string;
+function THakoComponent.GetStats: string;
 begin
   EnsureOpen;
   Result := FLite.GetStats;
 end;
 
-procedure TFireLiteComponent.Compact;
+procedure THakoComponent.Compact;
 begin
   EnsureOpen;
   FLite.Compact;
 end;
 
 initialization
-  { Required so TFireLiteComponent can be streamed from .lfm files at runtime. }
-  RegisterClass(TFireLiteComponent);
+  { Required so THakoComponent can be streamed from .lfm files at runtime. }
+  RegisterClass(THakoComponent);
 
 end.

@@ -1,4 +1,4 @@
-unit FireLite;
+unit Hako;
 
 {$mode objfpc}{$H+}
 {$macro on}
@@ -6,16 +6,16 @@ unit FireLite;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, SyncObjs, ctypes, FireLiteRaw;
+  Classes, SysUtils, fpjson, jsonparser, SyncObjs, ctypes, HakoRaw;
 
 type
-  EFireLiteError = class(Exception);
+  EHakoError = class(Exception);
 
-  TFLDurabilityMode = (dmAlways, dmInterval, dmManual, dmOnCommit);
+  THKDurabilityMode = (dmAlways, dmInterval, dmManual, dmOnCommit);
 
-  TFLCloudSyncMode = (csmServer, csmClient);
+  THKCloudSyncMode = (csmServer, csmClient);
 
-  TFLDiscoveryMode = (dmMdns = 0, dmBroadcast = 1, dmBoth = 2);
+  THKDiscoveryMode = (dmMdns = 0, dmBroadcast = 1, dmBoth = 2);
 
   TOnSnapshotCallback = procedure(const JsonSnapshot: string) of object;
 
@@ -24,56 +24,56 @@ type
     procedure Stop;
   end;
 
-  TFireLite = class;
-  TFLCollection = class;
-  TFLDocument = class;
-  TFLArray = class;
-  TFLQuery = class;
-  TFLRawDoc = class;
-  TFLRawResultSet = class;
-  TFLViewDoc = class;
-  TFLBatch = class;
-  TFLTransaction = class;
-  TFLDocumentRef = class;
-  TFLCloudSync = class;
+  THako = class;
+  THKCollection = class;
+  THKDocument = class;
+  THKArray = class;
+  THKQuery = class;
+  THKRawDoc = class;
+  THKRawResultSet = class;
+  THKViewDoc = class;
+  THKBatch = class;
+  THKTransaction = class;
+  THKDocumentRef = class;
+  THKCloudSync = class;
 
-  { TFLArray: Builder for List/Array types }
-  TFLArray = class
+  { THKArray: Builder for List/Array types }
+  THKArray = class
   private
-    FHandle: PFL_Array;
+    FHandle: PHK_Array;
     FOwned: Boolean;
     procedure EnsureHandle;
   public
     constructor Create;
     destructor Destroy; override;
-    function AppendStr(const Value: string): TFLArray;
-    function AppendInt(Value: Int64): TFLArray;
-    function AppendDoc(ADoc: TFLDocument): TFLArray;
-    property Handle: PFL_Array read FHandle;
+    function AppendStr(const Value: string): THKArray;
+    function AppendInt(Value: Int64): THKArray;
+    function AppendDoc(ADoc: THKDocument): THKArray;
+    property Handle: PHK_Array read FHandle;
   end;
 
-  { TFLConfig: Advanced Configuration Builder }
-  TFLConfig = class
+  { THKConfig: Advanced Configuration Builder }
+  THKConfig = class
   private
-    FHandle: PFL_Config;
+    FHandle: PHK_Config;
   public
     constructor Create;
     destructor Destroy; override;
-    function SetDurability(Mode: TFLDurabilityMode): TFLConfig;
-    function SetEncryptionKey(const Key: string): TFLConfig;
-    function SetEncryptedCollections(const Collections: array of string): TFLConfig;
-    function SetAuditLog(Enabled: Boolean; const LogPath: string = ''): TFLConfig;
-    function SetQueryWorkers(Count: NativeUInt): TFLConfig;
-    function SetMemoryLimits(MMapSize, MaxInlinedBytes: NativeUInt): TFLConfig;
-    function SetStorageTuning(PageSize, CompactionThreshold, GroupCommitMaxOps: NativeUInt): TFLConfig;
-    function SetBlobThreshold(ThresholdBytes: NativeUInt): TFLConfig;
-    function SetCompression(Enabled: Boolean; Level: Integer = 3): TFLConfig;
-    function SetBackgroundMaintenance(Enabled: Boolean): TFLConfig;
-    property Handle: PFL_Config read FHandle;
+    function SetDurability(Mode: THKDurabilityMode): THKConfig;
+    function SetEncryptionKey(const Key: string): THKConfig;
+    function SetEncryptedCollections(const Collections: array of string): THKConfig;
+    function SetAuditLog(Enabled: Boolean; const LogPath: string = ''): THKConfig;
+    function SetQueryWorkers(Count: NativeUInt): THKConfig;
+    function SetMemoryLimits(MMapSize, MaxInlinedBytes: NativeUInt): THKConfig;
+    function SetStorageTuning(PageSize, CompactionThreshold, GroupCommitMaxOps: NativeUInt): THKConfig;
+    function SetBlobThreshold(ThresholdBytes: NativeUInt): THKConfig;
+    function SetCompression(Enabled: Boolean; Level: Integer = 3): THKConfig;
+    function SetBackgroundMaintenance(Enabled: Boolean): THKConfig;
+    property Handle: PHK_Config read FHandle;
   end;
 
-  { TFLDocument: Binary Document Model }
-  TFLDocument = class
+  { THKDocument: Binary Document Model }
+  THKDocument = class
   private
     FHandle: PHK_Doc;
     FOwned: Boolean;
@@ -82,87 +82,87 @@ type
     constructor CreateFromHandle(AHandle: PHK_Doc; AOwned: Boolean); overload;
     destructor Destroy; override;
 
-    function InsertStr(const Key, Value: string): TFLDocument;
-    function InsertInt(const Key: string; Value: Int64): TFLDocument;
-    function InsertFloat(const Key: string; Value: Double): TFLDocument;
-    function InsertBool(const Key: string; Value: Boolean): TFLDocument;
-    function InsertNull(const Key: string): TFLDocument;
-    function InsertBin(const Key: string; Data: PByte; Len: NativeUInt): TFLDocument;
-    function InsertTimestamp(const Key: string; Micros: Int64): TFLDocument;
-    function InsertServerTimestamp(const Key: string): TFLDocument;
-    function InsertDoc(const Key: string; ADoc: TFLDocument): TFLDocument;
-    function InsertArray(const Key: string; AArray: TFLArray): TFLDocument;
-    function InsertRef(const Key, TargetCol, TargetID: string): TFLDocument;
+    function InsertStr(const Key, Value: string): THKDocument;
+    function InsertInt(const Key: string; Value: Int64): THKDocument;
+    function InsertFloat(const Key: string; Value: Double): THKDocument;
+    function InsertBool(const Key: string; Value: Boolean): THKDocument;
+    function InsertNull(const Key: string): THKDocument;
+    function InsertBin(const Key: string; Data: PByte; Len: NativeUInt): THKDocument;
+    function InsertTimestamp(const Key: string; Micros: Int64): THKDocument;
+    function InsertServerTimestamp(const Key: string): THKDocument;
+    function InsertDoc(const Key: string; ADoc: THKDocument): THKDocument;
+    function InsertArray(const Key: string; AArray: THKArray): THKDocument;
+    function InsertRef(const Key, TargetCol, TargetID: string): THKDocument;
 
-    class function FromJSON(const Obj: TJSONObject): TFLDocument;
+    class function FromJSON(const Obj: TJSONObject): THKDocument;
     function ToJSON: string;
     property Handle: PHK_Doc read FHandle;
   end;
 
-  { TFLBatch: Atomic Write Operations }
-  TFLBatch = class
+  { THKBatch: Atomic Write Operations }
+  THKBatch = class
   private
-    FDBHandle: PFL_Engine;
-    FHandle: PFL_Batch;
+    FDBHandle: PHK_Engine;
+    FHandle: PHK_Batch;
     FCommitted: Boolean;
   public
-    constructor Create(ADBHandle: PFL_Engine);
+    constructor Create(ADBHandle: PHK_Engine);
     destructor Destroy; override;
-    function SetDoc(const Col, ID: string; Doc: TFLDocument): TFLBatch;
-    function Delete(const Col, ID: string): TFLBatch;
+    function SetDoc(const Col, ID: string; Doc: THKDocument): THKBatch;
+    function Delete(const Col, ID: string): THKBatch;
     procedure Commit;
   end;
 
-  { TFLTransaction: Serializable RMW }
-  TFLTransaction = class
+  { THKTransaction: Serializable RMW }
+  THKTransaction = class
   private
-    FDBHandle: PFL_Engine;
-    FHandle: PFL_Transaction;
+    FDBHandle: PHK_Engine;
+    FHandle: PHK_Transaction;
   public
-    constructor Create(ADBHandle: PFL_Engine);
+    constructor Create(ADBHandle: PHK_Engine);
     destructor Destroy; override;
-    function Get(const Col, ID: string): TFLDocument;
-    procedure SetDoc(const Col, ID: string; Doc: TFLDocument);
+    function Get(const Col, ID: string): THKDocument;
+    procedure SetDoc(const Col, ID: string; Doc: THKDocument);
     procedure Commit;
   end;
 
-  { TFLRawDoc: borrowed row of a raw result set (v0.8.3+). The wrapper is
-    yours to free; the native handle belongs to the TFLRawResultSet. }
-  TFLRawDoc = class
+  { THKRawDoc: borrowed row of a raw result set (v0.8.3+). The wrapper is
+    yours to free; the native handle belongs to the THKRawResultSet. }
+  THKRawDoc = class
   private
-    FDB: TFireLite;
-    FHandle: PFL_RawDoc;
+    FDB: THako;
+    FHandle: PHK_RawDoc;
   public
-    constructor CreateBorrowed(ADB: TFireLite; AHandle: PFL_RawDoc);
+    constructor CreateBorrowed(ADB: THako; AHandle: PHK_RawDoc);
     function Id: string;
     function Bytes: TBytes;
-    { Decode into an owned TFLDocument (blobs inflated). Free the result. }
-    function Resolve(const Collection: string): TFLDocument;
-    property Handle: PFL_RawDoc read FHandle;
+    { Decode into an owned THKDocument (blobs inflated). Free the result. }
+    function Resolve(const Collection: string): THKDocument;
+    property Handle: PHK_RawDoc read FHandle;
   end;
 
-  { TFLRawResultSet: pinned storage bytes per row (v0.8.3+). }
-  TFLRawResultSet = class
+  { THKRawResultSet: pinned storage bytes per row (v0.8.3+). }
+  THKRawResultSet = class
   private
-    FDB: TFireLite;
-    FHandle: PFL_RawResultSet;
+    FDB: THako;
+    FHandle: PHK_RawResultSet;
   public
-    constructor Create(ADB: TFireLite; AHandle: PFL_RawResultSet);
+    constructor Create(ADB: THako; AHandle: PHK_RawResultSet);
     destructor Destroy; override;
     function Count: NativeUInt;
     { Borrowed row — valid until Free/Destroy. Free the wrapper, not the handle. }
-    function Get(Index: NativeUInt): TFLRawDoc;
+    function Get(Index: NativeUInt): THKRawDoc;
     procedure Free;
-    property Handle: PFL_RawResultSet read FHandle;
+    property Handle: PHK_RawResultSet read FHandle;
   end;
 
-  { TFLViewDoc: owned pinned-bytes handle with lazy typed pulls (v0.8.11+).
+  { THKViewDoc: owned pinned-bytes handle with lazy typed pulls (v0.8.11+).
     No decode, no owned construction; strict scalar matches. Free it. }
-  TFLViewDoc = class
+  THKViewDoc = class
   private
-    FHandle: PFL_ViewDoc;
+    FHandle: PHK_ViewDoc;
   public
-    constructor Create(AHandle: PFL_ViewDoc);
+    constructor Create(AHandle: PHK_ViewDoc);
     destructor Destroy; override;
     function FieldCount: NativeUInt;
     function HasField(const Key: string): Boolean;
@@ -172,14 +172,14 @@ type
     function GetStr(const Key: string): string;
     function GetBytes(const Key: string): TBytes;
     { Full owned decode. Free the result. }
-    function ToDoc(const DocID: string): TFLDocument;
-    property Handle: PFL_ViewDoc read FHandle;
+    function ToDoc(const DocID: string): THKDocument;
+    property Handle: PHK_ViewDoc read FHandle;
   end;
 
-  { TFLQuery: Optimized Parallel Query Engine }
-  TFLQuery = class
+  { THKQuery: Optimized Parallel Query Engine }
+  THKQuery = class
   private
-    FDB: TFireLite;
+    FDB: THako;
     FCollection: string;
     FWhereStr: array of record Field, Value, Op: string; end;
     FWhereInt: array of record Field: string; Value: Int64; Op: string; end;
@@ -194,52 +194,52 @@ FHasLimit, FHasOffset: Boolean;
 FDeferBlobs: Boolean;
     FSelectFields: TStringList;
     FStartAt, FStartAfter, FEndAt, FEndBefore: PHK_Doc;
-    FStartAfterRaw: PFL_RawDoc;
+    FStartAfterRaw: PHK_RawDoc;
     FWhereOrStr: array of record Field, Value: string; end;
     FWhereOrInt: array of record Field: string; Value: Int64; end;
 
-    function BuildNativeQuery: PFL_Query;
+    function BuildNativeQuery: PHK_Query;
   public
-    constructor Create(ADB: TFireLite; const ACollection: string);
+    constructor Create(ADB: THako; const ACollection: string);
     destructor Destroy; override;
 
-    function WhereEqStr(const Field, Value: string): TFLQuery;
-    function WhereEqBool(const Field: string; Value: Boolean): TFLQuery;
-    function WhereEqInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereNeStr(const Field, Value: string): TFLQuery;
-    function WhereNeInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereGtStr(const Field, Value: string): TFLQuery;
-    function WhereGtInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereGteStr(const Field, Value: string): TFLQuery;
-    function WhereGteInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereLtStr(const Field, Value: string): TFLQuery;
-    function WhereLtInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereLteStr(const Field, Value: string): TFLQuery;
-    function WhereLteInt(const Field: string; Value: Int64): TFLQuery;
-    function WhereIn(const Field: string; const Values: array of const): TFLQuery;
-    function WhereNotIn(const Field: string; const Values: array of const): TFLQuery;
-    function ArrayContains(const Field, Value: string): TFLQuery;
-    function ArrayContainsAny(const Field: string; const Values: array of const): TFLQuery;
-    function Match(const Field, Value: string): TFLQuery;
-    function MatchPrefix(const Field, Value: string): TFLQuery;
-    function Contains(const Field, Value: string): TFLQuery;
-    function StartsWith(const Field, Value: string): TFLQuery;
+    function WhereEqStr(const Field, Value: string): THKQuery;
+    function WhereEqBool(const Field: string; Value: Boolean): THKQuery;
+    function WhereEqInt(const Field: string; Value: Int64): THKQuery;
+    function WhereNeStr(const Field, Value: string): THKQuery;
+    function WhereNeInt(const Field: string; Value: Int64): THKQuery;
+    function WhereGtStr(const Field, Value: string): THKQuery;
+    function WhereGtInt(const Field: string; Value: Int64): THKQuery;
+    function WhereGteStr(const Field, Value: string): THKQuery;
+    function WhereGteInt(const Field: string; Value: Int64): THKQuery;
+    function WhereLtStr(const Field, Value: string): THKQuery;
+    function WhereLtInt(const Field: string; Value: Int64): THKQuery;
+    function WhereLteStr(const Field, Value: string): THKQuery;
+    function WhereLteInt(const Field: string; Value: Int64): THKQuery;
+    function WhereIn(const Field: string; const Values: array of const): THKQuery;
+    function WhereNotIn(const Field: string; const Values: array of const): THKQuery;
+    function ArrayContains(const Field, Value: string): THKQuery;
+    function ArrayContainsAny(const Field: string; const Values: array of const): THKQuery;
+    function Match(const Field, Value: string): THKQuery;
+    function MatchPrefix(const Field, Value: string): THKQuery;
+    function Contains(const Field, Value: string): THKQuery;
+    function StartsWith(const Field, Value: string): THKQuery;
     
-    function OrderBy(const Field: string; Ascending: Boolean = True): TFLQuery;
-    function Limit(ACount: NativeUInt): TFLQuery;
-    function Offset(ACount: NativeUInt): TFLQuery;
-    function Select(const Fields: array of string): TFLQuery;
+    function OrderBy(const Field: string; Ascending: Boolean = True): THKQuery;
+    function Limit(ACount: NativeUInt): THKQuery;
+    function Offset(ACount: NativeUInt): THKQuery;
+    function Select(const Fields: array of string): THKQuery;
 { Blob fields come back as placeholders (no blob reads); resolve per doc. }
-function DeferBlobs(Defer: Boolean = True): TFLQuery;
+function DeferBlobs(Defer: Boolean = True): THKQuery;
 
-    function StartAt(ASnapshot: TFLDocument): TFLQuery;
-    function StartAfter(ASnapshot: TFLDocument): TFLQuery;
-    function StartAfterRaw(ARaw: TFLRawDoc): TFLQuery;
-    function EndAt(ASnapshot: TFLDocument): TFLQuery;
-    function EndBefore(ASnapshot: TFLDocument): TFLQuery;
+    function StartAt(ASnapshot: THKDocument): THKQuery;
+    function StartAfter(ASnapshot: THKDocument): THKQuery;
+    function StartAfterRaw(ARaw: THKRawDoc): THKQuery;
+    function EndAt(ASnapshot: THKDocument): THKQuery;
+    function EndBefore(ASnapshot: THKDocument): THKQuery;
 
-    function WhereOrStr(const Field, Value: string): TFLQuery;
-    function WhereOrInt(const Field: string; Value: Int64): TFLQuery;
+    function WhereOrStr(const Field, Value: string): THKQuery;
+    function WhereOrInt(const Field: string; Value: Int64): THKQuery;
 
     function Count: Int64;
     function Sum(const Field: string): Double;
@@ -247,43 +247,43 @@ function DeferBlobs(Defer: Boolean = True): TFLQuery;
 
     function GetJSON: string;
     { Raw execution (v0.8.3+): pinned bytes per row. Free the result. }
-    function ExecuteRaw: TFLRawResultSet;
+    function ExecuteRaw: THKRawResultSet;
     { Zero-alloc walk (v0.8.6+): one call per scan. Returns rows visited. }
-    function Walk(Callback: TFL_WalkCallback; UserData: Pointer): Int64;
+    function Walk(Callback: THK_WalkCallback; UserData: Pointer): Int64;
     { Lazy view walk (v0.8.11+): each row lent as a borrowed view handle. }
-    function WalkView(Callback: TFL_ViewWalkCallback; UserData: Pointer): Int64;
+    function WalkView(Callback: THK_ViewWalkCallback; UserData: Pointer): Int64;
     function Delete: Int64;
     function DeleteLocal: Int64;
-    function Patch(Doc: TFLDocument): Int64;
+    function Patch(Doc: THKDocument): Int64;
     function OnSnapshot(const Callback: TOnSnapshotCallback; QueueToMainThread: Boolean = True): IFLSubscription;
   end;
 
-  TFLDocumentRef = class
+  THKDocumentRef = class
   private
-    FDB: TFireLite;
+    FDB: THako;
     FCollection, FDocID: string;
   public
-    constructor Create(ADB: TFireLite; const ACollection, ADocID: string);
-    procedure SetDoc(const Doc: TFLDocument);
-    function Get: TFLDocument;
+    constructor Create(ADB: THako; const ACollection, ADocID: string);
+    procedure SetDoc(const Doc: THKDocument);
+    function Get: THKDocument;
     procedure Delete;
     procedure DeleteLocal;
   end;
 
-  TFLCollection = class
+  THKCollection = class
   private
-    FDB: TFireLite;
+    FDB: THako;
     FName: string;
   public
-    constructor Create(ADB: TFireLite; const AName: string);
-    function Doc(const DocID: string): TFLDocumentRef;
-    function Query: TFLQuery;
+    constructor Create(ADB: THako; const AName: string);
+    function Doc(const DocID: string): THKDocumentRef;
+    function Query: THKQuery;
     
     { Shortcut Methods }
-    function WhereEqStr(const Field, Value: string): TFLQuery;
-    function WhereEqInt(const Field: string; Value: Int64): TFLQuery;
-    function Match(const Field, Value: string): TFLQuery;
-    function Limit(ACount: NativeUInt): TFLQuery;
+    function WhereEqStr(const Field, Value: string): THKQuery;
+    function WhereEqInt(const Field: string; Value: Int64): THKQuery;
+    function Match(const Field, Value: string): THKQuery;
+    function Limit(ACount: NativeUInt): THKQuery;
 
     procedure CreateIndex(const Field: string);
     procedure CreateFTSIndex(const Field: string);
@@ -291,38 +291,38 @@ function DeferBlobs(Defer: Boolean = True): TFLQuery;
     function ListIndexes: string;
   end;
 
-  TFLNetSyncer = class
+  THKNetSyncer = class
   private
-    FHandle: PFL_NetSyncer;
+    FHandle: PHK_NetSyncer;
   public
-    constructor Create(ADBHandle: PFL_Engine; const Name, RoomKey: string);
+    constructor Create(ADBHandle: PHK_Engine; const Name, RoomKey: string);
     destructor Destroy; override;
     procedure Start(APort: Word);
-    procedure SetDiscoveryMode(AMode: TFLDiscoveryMode);
+    procedure SetDiscoveryMode(AMode: THKDiscoveryMode);
     function StatusJSON: string;
   end;
 
-  TFLCloudSync = class
+  THKCloudSync = class
   private
-    FHandle: PFL_CloudSync;
+    FHandle: PHK_CloudSync;
   public
-    constructor Create(ADBHandle: PFL_Engine; Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
-    constructor CreateServer(ADBHandle: PFL_Engine; const ServerID, AuthToken: string);
-    constructor CreateClient(ADBHandle: PFL_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
+    constructor Create(ADBHandle: PHK_Engine; Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
+    constructor CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken: string);
+    constructor CreateClient(ADBHandle: PHK_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
     destructor Destroy; override;
     procedure Start(const Address: string);
     function StatusJSON: string;
     procedure Stop;
   end;
 
-  TFireLite = class
+  THako = class
   private
-    FHandle: PFL_Engine;
+    FHandle: PHK_Engine;
   public
     constructor Create(const DBPath: string); overload;
-    constructor Create(const DBPath: string; AConfig: TFLConfig); overload;
+    constructor Create(const DBPath: string; AConfig: THKConfig); overload;
     destructor Destroy; override;
-    function Collection(const Name: string): TFLCollection;
+    function Collection(const Name: string): THKCollection;
     function ListCollections: TStringList;
     function ListIndexes(const ACollection: string): string;
     function GetStats: string;
@@ -332,22 +332,22 @@ function DeferBlobs(Defer: Boolean = True): TFLQuery;
     function IsIndexesReady: Boolean;
     { Borrowed point view (v0.8.11+): lazy pulls, no decode. Free it.
       Returns nil when missing. }
-    function GetView(const Col, ID: string): TFLViewDoc;
+    function GetView(const Col, ID: string): THKViewDoc;
     procedure SnapshotIndices;
-    function InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: TFLDocument): Integer;
-    function GetByRef(Doc: TFLDocument; const FieldKey: string): TFLDocument;
+    function InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: THKDocument): Integer;
+    function GetByRef(Doc: THKDocument; const FieldKey: string): THKDocument;
     procedure CreateCompositeIndex(const ACollection: string; const Fields: array of string);
-    function StartBatch: TFLBatch;
-    function StartTransaction: TFLTransaction;
+    function StartBatch: THKBatch;
+    function StartTransaction: THKTransaction;
     procedure SetCollectionLocal(const ACollection: string; Local: Boolean);
     procedure ReplicateKey(const ACollection, ADocID: string);
     procedure ReplicateCollection(const ACollection: string);
     function VacuumCollection(const ACollection: string): Integer;
-    function CreateNetSyncer(const Name, RoomKey: string): TFLNetSyncer;
-    function CreateCloudSyncer(Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync;
-    function CreateCloudServerSyncer(const ServerID, AuthToken: string): TFLCloudSync;
-    function CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync;
-    property Handle: PFL_Engine read FHandle;
+    function CreateNetSyncer(const Name, RoomKey: string): THKNetSyncer;
+    function CreateCloudSyncer(Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync;
+    function CreateCloudServerSyncer(const ServerID, AuthToken: string): THKCloudSync;
+    function CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync;
+    property Handle: PHK_Engine read FHandle;
   end;
 
 implementation
@@ -366,57 +366,57 @@ var P: PChar;
 begin
   if Code <> 0 then begin
     P := hk_last_error;
-    raise EFireLiteError.CreateFmt('%s failed: %s', [Context, string(P)]);
+    raise EHakoError.CreateFmt('%s failed: %s', [Context, string(P)]);
   end;
 end;
 
-{ TFLArray }
+{ THKArray }
 
-constructor TFLArray.Create;
+constructor THKArray.Create;
 begin FHandle := hk_array_new; FOwned := True; end;
 
-destructor TFLArray.Destroy;
+destructor THKArray.Destroy;
 begin if FOwned and (FHandle <> nil) then hk_array_free(FHandle); inherited; end;
 
-procedure TFLArray.EnsureHandle;
-begin if FHandle = nil then raise EFireLiteError.Create('Array handle consumed'); end;
+procedure THKArray.EnsureHandle;
+begin if FHandle = nil then raise EHakoError.Create('Array handle consumed'); end;
 
-function TFLArray.AppendStr(const Value: string): TFLArray;
+function THKArray.AppendStr(const Value: string): THKArray;
 begin EnsureHandle; hk_array_append_str(FHandle, PChar(Value)); Result := Self; end;
 
-function TFLArray.AppendInt(Value: Int64): TFLArray;
+function THKArray.AppendInt(Value: Int64): THKArray;
 begin EnsureHandle; hk_array_append_int(FHandle, Value); Result := Self; end;
 
-function TFLArray.AppendDoc(ADoc: TFLDocument): TFLArray;
+function THKArray.AppendDoc(ADoc: THKDocument): THKArray;
 begin EnsureHandle; hk_array_append_doc(FHandle, ADoc.Handle); Result := Self; end;
 
-{ TFLConfig }
+{ THKConfig }
 
-constructor TFLConfig.Create;
+constructor THKConfig.Create;
 begin
   inherited Create;
   FHandle := hk_config_new;
 end;
 
-destructor TFLConfig.Destroy;
+destructor THKConfig.Destroy;
 begin
   if FHandle <> nil then hk_config_free(FHandle);
   inherited;
 end;
 
-function TFLConfig.SetDurability(Mode: TFLDurabilityMode): TFLConfig;
+function THKConfig.SetDurability(Mode: THKDurabilityMode): THKConfig;
 begin
   hk_config_set_durability(FHandle, Ord(Mode));
   Result := Self;
 end;
 
-function TFLConfig.SetEncryptionKey(const Key: string): TFLConfig;
+function THKConfig.SetEncryptionKey(const Key: string): THKConfig;
 begin
   hk_config_set_encryption_key(FHandle, PChar(Key));
   Result := Self;
 end;
 
-function TFLConfig.SetAuditLog(Enabled: Boolean; const LogPath: string): TFLConfig;
+function THKConfig.SetAuditLog(Enabled: Boolean; const LogPath: string): THKConfig;
 begin
   if LogPath = '' then
     hk_config_set_audit_log(FHandle, Enabled, nil)
@@ -425,19 +425,19 @@ begin
   Result := Self;
 end;
 
-function TFLConfig.SetQueryWorkers(Count: NativeUInt): TFLConfig;
+function THKConfig.SetQueryWorkers(Count: NativeUInt): THKConfig;
 begin
   hk_config_set_query_workers(FHandle, Count);
   Result := Self;
 end;
 
-function TFLConfig.SetMemoryLimits(MMapSize, MaxInlinedBytes: NativeUInt): TFLConfig;
+function THKConfig.SetMemoryLimits(MMapSize, MaxInlinedBytes: NativeUInt): THKConfig;
 begin
   hk_config_set_memory_limits(FHandle, MMapSize, MaxInlinedBytes);
   Result := Self;
 end;
 
-function TFLConfig.SetEncryptedCollections(const Collections: array of string): TFLConfig;
+function THKConfig.SetEncryptedCollections(const Collections: array of string): THKConfig;
 var
   I: Integer;
   S: string;
@@ -452,86 +452,86 @@ begin
   Result := Self;
 end;
 
-function TFLConfig.SetStorageTuning(PageSize, CompactionThreshold, GroupCommitMaxOps: NativeUInt): TFLConfig;
+function THKConfig.SetStorageTuning(PageSize, CompactionThreshold, GroupCommitMaxOps: NativeUInt): THKConfig;
 begin
   hk_config_set_storage_tuning(FHandle, PageSize, CompactionThreshold, GroupCommitMaxOps);
   Result := Self;
 end;
 
-function TFLConfig.SetBlobThreshold(ThresholdBytes: NativeUInt): TFLConfig;
+function THKConfig.SetBlobThreshold(ThresholdBytes: NativeUInt): THKConfig;
 begin
   hk_config_set_blob_threshold(FHandle, ThresholdBytes);
   Result := Self;
 end;
 
-function TFLConfig.SetCompression(Enabled: Boolean; Level: Integer): TFLConfig;
+function THKConfig.SetCompression(Enabled: Boolean; Level: Integer): THKConfig;
 begin
   hk_config_set_compression(FHandle, Enabled, Level);
   Result := Self;
 end;
 
-function TFLConfig.SetBackgroundMaintenance(Enabled: Boolean): TFLConfig;
+function THKConfig.SetBackgroundMaintenance(Enabled: Boolean): THKConfig;
 begin
   hk_config_set_background_maintenance(FHandle, Enabled);
   Result := Self;
 end;
 
-{ TFLDocument }
+{ THKDocument }
 
-constructor TFLDocument.Create;
+constructor THKDocument.Create;
 begin FHandle := hk_doc_new; FOwned := True; end;
 
-constructor TFLDocument.CreateFromHandle(AHandle: PHK_Doc; AOwned: Boolean);
+constructor THKDocument.CreateFromHandle(AHandle: PHK_Doc; AOwned: Boolean);
 begin FHandle := AHandle; FOwned := AOwned; end;
 
-destructor TFLDocument.Destroy;
+destructor THKDocument.Destroy;
 begin if FOwned and (FHandle <> nil) then hk_doc_free(FHandle); inherited; end;
 
-function TFLDocument.InsertStr(const Key, Value: string): TFLDocument;
+function THKDocument.InsertStr(const Key, Value: string): THKDocument;
 begin hk_doc_insert_str(FHandle, PChar(Key), PChar(Value)); Result := Self; end;
 
-function TFLDocument.InsertInt(const Key: string; Value: Int64): TFLDocument;
+function THKDocument.InsertInt(const Key: string; Value: Int64): THKDocument;
 begin hk_doc_insert_int(FHandle, PChar(Key), Value); Result := Self; end;
 
-function TFLDocument.InsertFloat(const Key: string; Value: Double): TFLDocument;
+function THKDocument.InsertFloat(const Key: string; Value: Double): THKDocument;
 begin hk_doc_insert_float(FHandle, PChar(Key), Value); Result := Self; end;
 
-function TFLDocument.InsertBool(const Key: string; Value: Boolean): TFLDocument;
+function THKDocument.InsertBool(const Key: string; Value: Boolean): THKDocument;
 begin hk_doc_insert_bool(FHandle, PChar(Key), Value); Result := Self; end;
 
-function TFLDocument.InsertNull(const Key: string): TFLDocument;
+function THKDocument.InsertNull(const Key: string): THKDocument;
 begin hk_doc_insert_null(FHandle, PChar(Key)); Result := Self; end;
 
-function TFLDocument.InsertBin(const Key: string; Data: PByte; Len: NativeUInt): TFLDocument;
+function THKDocument.InsertBin(const Key: string; Data: PByte; Len: NativeUInt): THKDocument;
 begin hk_doc_insert_bin(FHandle, PChar(Key), Data, Len); Result := Self; end;
 
-function TFLDocument.InsertTimestamp(const Key: string; Micros: Int64): TFLDocument;
+function THKDocument.InsertTimestamp(const Key: string; Micros: Int64): THKDocument;
 begin hk_doc_insert_timestamp(FHandle, PChar(Key), Micros); Result := Self; end;
 
-function TFLDocument.InsertServerTimestamp(const Key: string): TFLDocument;
+function THKDocument.InsertServerTimestamp(const Key: string): THKDocument;
 begin hk_doc_insert_server_timestamp(FHandle, PChar(Key)); Result := Self; end;
 
-function TFLDocument.InsertDoc(const Key: string; ADoc: TFLDocument): TFLDocument;
+function THKDocument.InsertDoc(const Key: string; ADoc: THKDocument): THKDocument;
 begin hk_doc_insert_doc(FHandle, PChar(Key), ADoc.Handle); Result := Self; end;
 
-function TFLDocument.InsertArray(const Key: string; AArray: TFLArray): TFLDocument;
+function THKDocument.InsertArray(const Key: string; AArray: THKArray): THKDocument;
 begin
   CheckStatus(hk_doc_insert_array(FHandle, PChar(Key), AArray.Handle), 'InsertArray');
   AArray.FHandle := nil; // Handled by Rust ownership
   Result := Self;
 end;
 
-function TFLDocument.InsertRef(const Key, TargetCol, TargetID: string): TFLDocument;
+function THKDocument.InsertRef(const Key, TargetCol, TargetID: string): THKDocument;
 begin hk_doc_insert_reference(FHandle, PChar(Key), PChar(TargetCol), PChar(TargetID)); Result := Self; end;
 
-class function TFLDocument.FromJSON(const Obj: TJSONObject): TFLDocument;
+class function THKDocument.FromJSON(const Obj: TJSONObject): THKDocument;
 var 
   I, J: Integer; 
   Key: string; 
   Data: TJSONData;
-  SubArr: TFLArray;
+  SubArr: THKArray;
 begin
-  Result := TFLDocument.Create;
+  Result := THKDocument.Create;
   for I := 0 to Obj.Count - 1 do begin
     Key := Obj.Names[I]; Data := Obj.Items[I];
     case Data.JSONType of
@@ -539,12 +539,12 @@ begin
       jtBoolean: Result.InsertBool(Key, Data.AsBoolean);
       jtNumber: if Pos('.', Data.AsJSON) > 0 then Result.InsertFloat(Key, Data.AsFloat) else Result.InsertInt(Key, Data.AsInt64);
       jtString: Result.InsertStr(Key, Data.AsString);
-      jtObject: Result.InsertDoc(Key, TFLDocument.FromJSON(TJSONObject(Data)));
+      jtObject: Result.InsertDoc(Key, THKDocument.FromJSON(TJSONObject(Data)));
       jtArray: begin
-        SubArr := TFLArray.Create;
+        SubArr := THKArray.Create;
         for J := 0 to TJSONArray(Data).Count - 1 do begin
            if TJSONArray(Data).Items[J].JSONType = jtObject then
-             SubArr.AppendDoc(TFLDocument.FromJSON(TJSONObject(TJSONArray(Data).Items[J])))
+             SubArr.AppendDoc(THKDocument.FromJSON(TJSONObject(TJSONArray(Data).Items[J])))
            else if TJSONArray(Data).Items[J].JSONType = jtNumber then
              SubArr.AppendInt(TJSONArray(Data).Items[J].AsInt64)
            else
@@ -556,54 +556,54 @@ begin
   end;
 end;
 
-function TFLDocument.ToJSON: string;
+function THKDocument.ToJSON: string;
 begin Result := ConsumeCString(hk_doc_to_json(FHandle)); end;
 
-{ TFLBatch }
+{ THKBatch }
 
-constructor TFLBatch.Create(ADBHandle: PFL_Engine);
+constructor THKBatch.Create(ADBHandle: PHK_Engine);
 begin inherited Create; FDBHandle := ADBHandle; FHandle := hk_batch_new; end;
 
-destructor TFLBatch.Destroy;
+destructor THKBatch.Destroy;
 begin if (FHandle <> nil) and not FCommitted then hk_batch_free(FHandle); inherited; end;
 
-function TFLBatch.SetDoc(const Col, ID: string; Doc: TFLDocument): TFLBatch;
+function THKBatch.SetDoc(const Col, ID: string; Doc: THKDocument): THKBatch;
 begin CheckStatus(hk_batch_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'BatchSet'); Result := Self; end;
 
-function TFLBatch.Delete(const Col, ID: string): TFLBatch;
+function THKBatch.Delete(const Col, ID: string): THKBatch;
 begin CheckStatus(hk_batch_delete(FHandle, PChar(Col), PChar(ID)), 'BatchDelete'); Result := Self; end;
 
-procedure TFLBatch.Commit;
+procedure THKBatch.Commit;
 begin CheckStatus(hk_batch_commit(FDBHandle, FHandle), 'BatchCommit'); FCommitted := True; end;
 
-{ TFLTransaction }
+{ THKTransaction }
 
-constructor TFLTransaction.Create(ADBHandle: PFL_Engine);
+constructor THKTransaction.Create(ADBHandle: PHK_Engine);
 begin inherited Create; FDBHandle := ADBHandle; FHandle := hk_transaction_begin(FDBHandle); end;
 
-destructor TFLTransaction.Destroy;
+destructor THKTransaction.Destroy;
 begin if FHandle <> nil then hk_transaction_free(FHandle); inherited; end;
 
-function TFLTransaction.Get(const Col, ID: string): TFLDocument;
+function THKTransaction.Get(const Col, ID: string): THKDocument;
 var H: PHK_Doc;
 begin
   H := hk_transaction_get(FDBHandle, FHandle, PChar(Col), PChar(ID));
   if H = nil then Exit(nil);
-  Result := TFLDocument.CreateFromHandle(H, True);
+  Result := THKDocument.CreateFromHandle(H, True);
 end;
 
-procedure TFLTransaction.SetDoc(const Col, ID: string; Doc: TFLDocument);
+procedure THKTransaction.SetDoc(const Col, ID: string; Doc: THKDocument);
 begin CheckStatus(hk_transaction_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'TxSet'); end;
 
-procedure TFLTransaction.Commit;
+procedure THKTransaction.Commit;
 begin CheckStatus(hk_transaction_commit(FDBHandle, FHandle), 'TxCommit'); end;
 
-{ TFLQuery }
+{ THKQuery }
 
-constructor TFLQuery.Create(ADB: TFireLite; const ACollection: string);
+constructor THKQuery.Create(ADB: THako; const ACollection: string);
 begin FDB := ADB; FCollection := ACollection; FSelectFields := TStringList.Create; end;
 
-destructor TFLQuery.Destroy;
+destructor THKQuery.Destroy;
 var I: Integer; begin
   FSelectFields.Free;
   for I := Low(FWhereIn) to High(FWhereIn) do FWhereIn[I].Data.Free;
@@ -612,58 +612,58 @@ var I: Integer; begin
   inherited;
 end;
 
-function TFLQuery.WhereEqStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereEqStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := '=='; Result := Self; end;
 
-function TFLQuery.WhereEqBool(const Field: string; Value: Boolean): TFLQuery;
+function THKQuery.WhereEqBool(const Field: string; Value: Boolean): THKQuery;
 var L: Integer; begin L := Length(FWhereBool); SetLength(FWhereBool, L + 1); FWhereBool[L].Field := Field; FWhereBool[L].Value := Value; Result := Self; end;
 
-function TFLQuery.WhereEqInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereEqInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'eq'; Result := Self; end;
 
-function TFLQuery.WhereNeStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereNeStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'ne'; Result := Self; end;
 
-function TFLQuery.WhereNeInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereNeInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'ne'; Result := Self; end;
 
-function TFLQuery.WhereGtStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereGtStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'gt'; Result := Self; end;
 
-function TFLQuery.WhereGtInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereGtInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'gt'; Result := Self; end;
 
-function TFLQuery.WhereGteStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereGteStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'gte'; Result := Self; end;
 
-function TFLQuery.WhereGteInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereGteInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'gte'; Result := Self; end;
 
-function TFLQuery.WhereLtStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereLtStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'lt'; Result := Self; end;
 
-function TFLQuery.WhereLtInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereLtInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'lt'; Result := Self; end;
 
-function TFLQuery.WhereLteStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereLteStr(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'lte'; Result := Self; end;
 
-function TFLQuery.WhereLteInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereLteInt(const Field: string; Value: Int64): THKQuery;
 var L: Integer; begin L := Length(FWhereInt); SetLength(FWhereInt, L + 1); FWhereInt[L].Field := Field; FWhereInt[L].Value := Value; FWhereInt[L].Op := 'lte'; Result := Self; end;
 
-function TFLQuery.Match(const Field, Value: string): TFLQuery;
+function THKQuery.Match(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'match'; Result := Self; end;
 
-function TFLQuery.MatchPrefix(const Field, Value: string): TFLQuery;
+function THKQuery.MatchPrefix(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'match_prefix'; Result := Self; end;
 
-function TFLQuery.Contains(const Field, Value: string): TFLQuery;
+function THKQuery.Contains(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'contains'; Result := Self; end;
 
-function TFLQuery.StartsWith(const Field, Value: string): TFLQuery;
+function THKQuery.StartsWith(const Field, Value: string): THKQuery;
 var L: Integer; begin L := Length(FWhereStr); SetLength(FWhereStr, L + 1); FWhereStr[L].Field := Field; FWhereStr[L].Value := Value; FWhereStr[L].Op := 'starts_with'; Result := Self; end;
 
-function TFLQuery.WhereIn(const Field: string; const Values: array of const): TFLQuery;
+function THKQuery.WhereIn(const Field: string; const Values: array of const): THKQuery;
 var L, I: Integer;
 begin
   L := Length(FWhereIn); SetLength(FWhereIn, L + 1);
@@ -678,7 +678,7 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.WhereNotIn(const Field: string; const Values: array of const): TFLQuery;
+function THKQuery.WhereNotIn(const Field: string; const Values: array of const): THKQuery;
 var L, I: Integer;
 begin
   L := Length(FWhereNotIn); SetLength(FWhereNotIn, L + 1);
@@ -693,7 +693,7 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.ArrayContains(const Field, Value: string): TFLQuery;
+function THKQuery.ArrayContains(const Field, Value: string): THKQuery;
 var L: Integer;
 begin
   L := Length(FWhereStr); SetLength(FWhereStr, L + 1);
@@ -701,7 +701,7 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.ArrayContainsAny(const Field: string; const Values: array of const): TFLQuery;
+function THKQuery.ArrayContainsAny(const Field: string; const Values: array of const): THKQuery;
 var L, I: Integer;
 begin
   L := Length(FWhereArrayContainsAny); SetLength(FWhereArrayContainsAny, L + 1);
@@ -716,47 +716,47 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.OrderBy(const Field: string; Ascending: Boolean): TFLQuery;
+function THKQuery.OrderBy(const Field: string; Ascending: Boolean): THKQuery;
 begin FOrderByField := Field; FOrderByAsc := Ascending; Result := Self; end;
 
-function TFLQuery.Limit(ACount: NativeUInt): TFLQuery;
+function THKQuery.Limit(ACount: NativeUInt): THKQuery;
 begin FLimit := ACount; FHasLimit := True; Result := Self; end;
 
-function TFLQuery.Offset(ACount: NativeUInt): TFLQuery;
+function THKQuery.Offset(ACount: NativeUInt): THKQuery;
 begin FOffset := ACount; FHasOffset := True; Result := Self; end;
 
-function TFLQuery.DeferBlobs(Defer: Boolean): TFLQuery;
+function THKQuery.DeferBlobs(Defer: Boolean): THKQuery;
 begin FDeferBlobs := Defer; Result := Self; end;
 
-function TFLQuery.StartAt(ASnapshot: TFLDocument): TFLQuery;
+function THKQuery.StartAt(ASnapshot: THKDocument): THKQuery;
 begin
   if ASnapshot <> nil then FStartAt := ASnapshot.Handle;
   Result := Self;
 end;
 
-function TFLQuery.StartAfter(ASnapshot: TFLDocument): TFLQuery;
+function THKQuery.StartAfter(ASnapshot: THKDocument): THKQuery;
 begin
   if ASnapshot <> nil then FStartAfter := ASnapshot.Handle;
   Result := Self;
 end;
 
-function TFLQuery.EndAt(ASnapshot: TFLDocument): TFLQuery;
+function THKQuery.EndAt(ASnapshot: THKDocument): THKQuery;
 begin
   if ASnapshot <> nil then FEndAt := ASnapshot.Handle;
   Result := Self;
 end;
 
-function TFLQuery.EndBefore(ASnapshot: TFLDocument): TFLQuery;
+function THKQuery.EndBefore(ASnapshot: THKDocument): THKQuery;
 begin
   if ASnapshot <> nil then FEndBefore := ASnapshot.Handle;
   Result := Self;
 end;
 
-function TFLQuery.Select(const Fields: array of string): TFLQuery;
+function THKQuery.Select(const Fields: array of string): THKQuery;
 var I: Integer; begin FSelectFields.Clear; for I := Low(Fields) to High(Fields) do FSelectFields.Add(Fields[I]); Result := Self; end;
 
-function TFLQuery.BuildNativeQuery: PFL_Query;
-var I, J: Integer; TmpArr: PFL_Array;
+function THKQuery.BuildNativeQuery: PHK_Query;
+var I, J: Integer; TmpArr: PHK_Array;
 begin
   Result := hk_query_new(PChar(FCollection));
   try
@@ -826,36 +826,36 @@ if FDeferBlobs then hk_query_defer_blobs(Result, 1);
   except hk_query_free(Result); raise; end;
 end;
 
-function TFLQuery.Count: Int64;
-var Q: PFL_Query; J: TJSONObject; begin
+function THKQuery.Count: Int64;
+var Q: PHK_Query; J: TJSONObject; begin
   Q := BuildNativeQuery; try hk_query_aggregate_count(Q);
   J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
   Result := J.Get('count', 0); J.Free; finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.Sum(const Field: string): Double;
-var Q: PFL_Query; J: TJSONObject; begin
+function THKQuery.Sum(const Field: string): Double;
+var Q: PHK_Query; J: TJSONObject; begin
   Q := BuildNativeQuery; try hk_query_aggregate_sum(Q, PChar(Field));
   J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
   Result := J.Get('sum_'+Field, 0.0); J.Free; finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.Avg(const Field: string): Double;
-var Q: PFL_Query; J: TJSONObject; begin
+function THKQuery.Avg(const Field: string): Double;
+var Q: PHK_Query; J: TJSONObject; begin
   Q := BuildNativeQuery; try hk_query_aggregate_avg(Q, PChar(Field));
   J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
   Result := J.Get('avg_'+Field, 0.0); J.Free; finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.GetJSON: string;
-var Q: PFL_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
+function THKQuery.GetJSON: string;
+var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
 
-{ TFLRawDoc }
+{ THKRawDoc }
 
-constructor TFLRawDoc.CreateBorrowed(ADB: TFireLite; AHandle: PFL_RawDoc);
+constructor THKRawDoc.CreateBorrowed(ADB: THako; AHandle: PHK_RawDoc);
 begin FDB := ADB; FHandle := AHandle; end;
 
-function TFLRawDoc.Id: string;
+function THKRawDoc.Id: string;
 var P: PChar; L: SizeUInt;
 begin
   P := hk_rawdoc_id(FHandle, @L);
@@ -863,7 +863,7 @@ begin
   SetString(Result, P, L);
 end;
 
-function TFLRawDoc.Bytes: TBytes;
+function THKRawDoc.Bytes: TBytes;
 var P: PByte; L: SizeUInt;
 begin
   P := hk_rawdoc_bytes(FHandle, @L);
@@ -872,96 +872,96 @@ begin
   if L > 0 then Move(P^, Result[0], L);
 end;
 
-function TFLRawDoc.Resolve(const Collection: string): TFLDocument;
+function THKRawDoc.Resolve(const Collection: string): THKDocument;
 var H: PHK_Doc;
 begin
   H := hk_rawdoc_to_doc(FDB.Handle, FHandle, PChar(Collection));
-  if H = nil then raise EFireLiteError.Create('hk_rawdoc_to_doc failed: ' + string(hk_last_error));
-  Result := TFLDocument.CreateFromHandle(H, True);
+  if H = nil then raise EHakoError.Create('hk_rawdoc_to_doc failed: ' + string(hk_last_error));
+  Result := THKDocument.CreateFromHandle(H, True);
 end;
 
-{ TFLRawResultSet }
+{ THKRawResultSet }
 
-constructor TFLRawResultSet.Create(ADB: TFireLite; AHandle: PFL_RawResultSet);
+constructor THKRawResultSet.Create(ADB: THako; AHandle: PHK_RawResultSet);
 begin FDB := ADB; FHandle := AHandle; end;
 
-destructor TFLRawResultSet.Destroy;
+destructor THKRawResultSet.Destroy;
 begin Free; inherited; end;
 
-function TFLRawResultSet.Count: NativeUInt;
+function THKRawResultSet.Count: NativeUInt;
 begin Result := hk_rawresult_count(FHandle); end;
 
-function TFLRawResultSet.Get(Index: NativeUInt): TFLRawDoc;
-var H: PFL_RawDoc;
+function THKRawResultSet.Get(Index: NativeUInt): THKRawDoc;
+var H: PHK_RawDoc;
 begin
   H := hk_rawresult_get(FHandle, Index);
-  if H = nil then raise EFireLiteError.Create('raw row out of range');
-  Result := TFLRawDoc.CreateBorrowed(FDB, H);
+  if H = nil then raise EHakoError.Create('raw row out of range');
+  Result := THKRawDoc.CreateBorrowed(FDB, H);
 end;
 
-procedure TFLRawResultSet.Free;
+procedure THKRawResultSet.Free;
 begin if FHandle <> nil then begin hk_rawresult_free(FHandle); FHandle := nil; end; end;
 
-function TFLQuery.StartAfterRaw(ARaw: TFLRawDoc): TFLQuery;
+function THKQuery.StartAfterRaw(ARaw: THKRawDoc): THKQuery;
 begin FStartAfterRaw := ARaw.Handle; Result := Self; end;
 
-function TFLQuery.ExecuteRaw: TFLRawResultSet;
-var Q: PFL_Query; H: PFL_RawResultSet;
+function THKQuery.ExecuteRaw: THKRawResultSet;
+var Q: PHK_Query; H: PHK_RawResultSet;
 begin
   Q := BuildNativeQuery; try
     H := hk_query_execute_raw(FDB.Handle, Q);
-    if H = nil then raise EFireLiteError.Create('hk_query_execute_raw failed: ' + string(hk_last_error));
-    Result := TFLRawResultSet.Create(FDB, H);
+    if H = nil then raise EHakoError.Create('hk_query_execute_raw failed: ' + string(hk_last_error));
+    Result := THKRawResultSet.Create(FDB, H);
   finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.Walk(Callback: TFL_WalkCallback; UserData: Pointer): Int64;
-var Q: PFL_Query;
+function THKQuery.Walk(Callback: THK_WalkCallback; UserData: Pointer): Int64;
+var Q: PHK_Query;
 begin
   Q := BuildNativeQuery; try
     Result := hk_cursor_walk(FDB.Handle, Q, Callback, UserData);
-    if Result < 0 then raise EFireLiteError.Create('hk_cursor_walk failed: ' + string(hk_last_error));
+    if Result < 0 then raise EHakoError.Create('hk_cursor_walk failed: ' + string(hk_last_error));
   finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.WalkView(Callback: TFL_ViewWalkCallback; UserData: Pointer): Int64;
-var Q: PFL_Query;
+function THKQuery.WalkView(Callback: THK_ViewWalkCallback; UserData: Pointer): Int64;
+var Q: PHK_Query;
 begin
   Q := BuildNativeQuery; try
     Result := hk_cursor_walk_view(FDB.Handle, Q, Callback, UserData);
-    if Result < 0 then raise EFireLiteError.Create('hk_cursor_walk_view failed: ' + string(hk_last_error));
+    if Result < 0 then raise EHakoError.Create('hk_cursor_walk_view failed: ' + string(hk_last_error));
   finally hk_query_free(Q); end;
 end;
 
-{ TFLViewDoc }
+{ THKViewDoc }
 
-constructor TFLViewDoc.Create(AHandle: PFL_ViewDoc);
+constructor THKViewDoc.Create(AHandle: PHK_ViewDoc);
 begin FHandle := AHandle; end;
 
-destructor TFLViewDoc.Destroy;
+destructor THKViewDoc.Destroy;
 begin if FHandle <> nil then hk_view_free(FHandle); inherited; end;
 
-function TFLViewDoc.FieldCount: NativeUInt;
+function THKViewDoc.FieldCount: NativeUInt;
 begin Result := hk_view_field_count(FHandle); end;
 
-function TFLViewDoc.HasField(const Key: string): Boolean;
+function THKViewDoc.HasField(const Key: string): Boolean;
 begin Result := hk_view_has_field(FHandle, PChar(Key)); end;
 
-function TFLViewDoc.GetInt(const Key: string; out Value: Int64): Boolean;
+function THKViewDoc.GetInt(const Key: string; out Value: Int64): Boolean;
 var V: Int64;
 begin
   Result := hk_view_get_int(FHandle, PChar(Key), @V);
   if Result then Value := V;
 end;
 
-function TFLViewDoc.GetFloat(const Key: string; out Value: Double): Boolean;
+function THKViewDoc.GetFloat(const Key: string; out Value: Double): Boolean;
 var V: Double;
 begin
   Result := hk_view_get_float(FHandle, PChar(Key), @V);
   if Result then Value := V;
 end;
 
-function TFLViewDoc.GetBool(const Key: string; out Value: Boolean): Boolean;
+function THKViewDoc.GetBool(const Key: string; out Value: Boolean): Boolean;
 var R: cint32;
 begin
   R := hk_view_get_bool(FHandle, PChar(Key));
@@ -969,7 +969,7 @@ begin
   if Result then Value := R <> 0;
 end;
 
-function TFLViewDoc.GetStr(const Key: string): string;
+function THKViewDoc.GetStr(const Key: string): string;
 var P: PChar; L: SizeUInt;
 begin
   P := hk_view_get_str(FHandle, PChar(Key), @L);
@@ -977,7 +977,7 @@ begin
   SetString(Result, P, L);
 end;
 
-function TFLViewDoc.GetBytes(const Key: string): TBytes;
+function THKViewDoc.GetBytes(const Key: string): TBytes;
 var P: PByte; L: SizeUInt;
 begin
   P := hk_view_get_bytes(FHandle, PChar(Key), @L);
@@ -986,15 +986,15 @@ begin
   if L > 0 then Move(P^, Result[0], L);
 end;
 
-function TFLViewDoc.ToDoc(const DocID: string): TFLDocument;
+function THKViewDoc.ToDoc(const DocID: string): THKDocument;
 var H: PHK_Doc;
 begin
   H := hk_view_to_doc(FHandle, PChar(DocID));
-  if H = nil then raise EFireLiteError.Create('hk_view_to_doc failed: ' + string(hk_last_error));
-  Result := TFLDocument.CreateFromHandle(H, True);
+  if H = nil then raise EHakoError.Create('hk_view_to_doc failed: ' + string(hk_last_error));
+  Result := THKDocument.CreateFromHandle(H, True);
 end;
 
-function TFLQuery.WhereOrStr(const Field, Value: string): TFLQuery;
+function THKQuery.WhereOrStr(const Field, Value: string): THKQuery;
 begin
   SetLength(FWhereOrStr, Length(FWhereOrStr) + 1);
   FWhereOrStr[High(FWhereOrStr)].Field := Field;
@@ -1002,7 +1002,7 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.WhereOrInt(const Field: string; Value: Int64): TFLQuery;
+function THKQuery.WhereOrInt(const Field: string; Value: Int64): THKQuery;
 begin
   SetLength(FWhereOrInt, Length(FWhereOrInt) + 1);
   FWhereOrInt[High(FWhereOrInt)].Field := Field;
@@ -1010,24 +1010,24 @@ begin
   Result := Self;
 end;
 
-function TFLQuery.Delete: Int64;
-var Q: PFL_Query;
+function THKQuery.Delete: Int64;
+var Q: PHK_Query;
 begin
   Q := BuildNativeQuery; try
     Result := hk_query_delete(FDB.Handle, Q);
   finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.DeleteLocal: Int64;
-var Q: PFL_Query;
+function THKQuery.DeleteLocal: Int64;
+var Q: PHK_Query;
 begin
   Q := BuildNativeQuery; try
     Result := hk_query_delete_local(FDB.Handle, Q);
   finally hk_query_free(Q); end;
 end;
 
-function TFLQuery.Patch(Doc: TFLDocument): Int64;
-var Q: PFL_Query;
+function THKQuery.Patch(Doc: THKDocument): Int64;
+var Q: PHK_Query;
 begin
   Q := BuildNativeQuery; try
     Result := hk_query_patch(FDB.Handle, Q, Doc.Handle);
@@ -1035,9 +1035,9 @@ begin
 end;
 
 type
-  TFLPollingThread = class(TThread)
+  THKPollingThread = class(TThread)
   private
-    FQuery: TFLQuery;
+    FQuery: THKQuery;
     FCallback: TOnSnapshotCallback;
     FQueueToMain: Boolean;
     FInterval: Cardinal;
@@ -1045,31 +1045,31 @@ type
   protected
     procedure Execute; override;
   public
-    constructor Create(AQuery: TFLQuery; ACallback: TOnSnapshotCallback; AQueueToMain: Boolean; AInterval: Cardinal);
+    constructor Create(AQuery: THKQuery; ACallback: TOnSnapshotCallback; AQueueToMain: Boolean; AInterval: Cardinal);
   end;
 
-  TFLPollingSubscription = class(TInterfacedObject, IFLSubscription)
+  THKPollingSubscription = class(TInterfacedObject, IFLSubscription)
   private
-    FThread: TFLPollingThread;
+    FThread: THKPollingThread;
   public
-    constructor Create(AThread: TFLPollingThread);
+    constructor Create(AThread: THKPollingThread);
     procedure Stop;
     destructor Destroy; override;
   end;
 
-constructor TFLPollingThread.Create(AQuery: TFLQuery; ACallback: TOnSnapshotCallback; AQueueToMain: Boolean; AInterval: Cardinal);
+constructor THKPollingThread.Create(AQuery: THKQuery; ACallback: TOnSnapshotCallback; AQueueToMain: Boolean; AInterval: Cardinal);
 begin
   inherited Create(False);
   FQuery := AQuery; FCallback := ACallback; FQueueToMain := AQueueToMain; FInterval := AInterval;
   FreeOnTerminate := False;
 end;
 
-procedure TFLPollingThread.DoCallback;
+procedure THKPollingThread.DoCallback;
 begin
   FCallback(FQuery.GetJSON);
 end;
 
-procedure TFLPollingThread.Execute;
+procedure THKPollingThread.Execute;
 begin
   while not Terminated do begin
     try
@@ -1082,18 +1082,18 @@ begin
   end;
 end;
 
-constructor TFLPollingSubscription.Create(AThread: TFLPollingThread);
+constructor THKPollingSubscription.Create(AThread: THKPollingThread);
 begin
   inherited Create;
   FThread := AThread;
 end;
 
-procedure TFLPollingSubscription.Stop;
+procedure THKPollingSubscription.Stop;
 begin
   FThread.Terminate;
 end;
 
-destructor TFLPollingSubscription.Destroy;
+destructor THKPollingSubscription.Destroy;
 begin
   FThread.Terminate;
   FThread.WaitFor;
@@ -1101,55 +1101,55 @@ begin
   inherited;
 end;
 
-function TFLQuery.OnSnapshot(const Callback: TOnSnapshotCallback; QueueToMainThread: Boolean): IFLSubscription;
+function THKQuery.OnSnapshot(const Callback: TOnSnapshotCallback; QueueToMainThread: Boolean): IFLSubscription;
 begin
-  Result := TFLPollingSubscription.Create(TFLPollingThread.Create(Self, Callback, QueueToMainThread, 1000));
+  Result := THKPollingSubscription.Create(THKPollingThread.Create(Self, Callback, QueueToMainThread, 1000));
 end;
 
-{ TFLDocumentRef }
+{ THKDocumentRef }
 
-constructor TFLDocumentRef.Create(ADB: TFireLite; const ACollection, ADocID: string);
+constructor THKDocumentRef.Create(ADB: THako; const ACollection, ADocID: string);
 begin
   inherited Create;
   FDB := ADB; FCollection := ACollection; FDocID := ADocID;
 end;
 
-procedure TFLDocumentRef.SetDoc(const Doc: TFLDocument);
+procedure THKDocumentRef.SetDoc(const Doc: THKDocument);
 begin
   CheckStatus(hk_engine_insert(FDB.Handle, PChar(FCollection), PChar(FDocID), Doc.Handle), 'DocRefSet');
 end;
 
-function TFLDocumentRef.Get: TFLDocument;
+function THKDocumentRef.Get: THKDocument;
 var H: PHK_Doc;
 begin
   H := hk_engine_get(FDB.Handle, PChar(FCollection), PChar(FDocID));
   if H = nil then Exit(nil);
-  Result := TFLDocument.CreateFromHandle(H, True);
+  Result := THKDocument.CreateFromHandle(H, True);
 end;
 
-procedure TFLDocumentRef.Delete;
+procedure THKDocumentRef.Delete;
 begin
   CheckStatus(hk_engine_delete(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDelete');
 end;
 
-procedure TFLDocumentRef.DeleteLocal;
+procedure THKDocumentRef.DeleteLocal;
 begin
   CheckStatus(hk_engine_delete_local(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDeleteLocal');
 end;
 
-{ TFLCollection }
+{ THKCollection }
 
-constructor TFLCollection.Create(ADB: TFireLite; const AName: string); begin inherited Create; FDB := ADB; FName := AName; end;
-function TFLCollection.Doc(const DocID: string): TFLDocumentRef; begin Result := TFLDocumentRef.Create(FDB, FName, DocID); end;
-function TFLCollection.Query: TFLQuery; begin Result := TFLQuery.Create(FDB, FName); end;
-function TFLCollection.WhereEqStr(const Field, Value: string): TFLQuery; begin Result := Query.WhereEqStr(Field, Value); end;
-function TFLCollection.WhereEqInt(const Field: string; Value: Int64): TFLQuery; begin Result := Query.WhereEqInt(Field, Value); end;
-function TFLCollection.Match(const Field, Value: string): TFLQuery; begin Result := Query.Match(Field, Value); end;
-function TFLCollection.Limit(ACount: NativeUInt): TFLQuery; begin Result := Query.Limit(ACount); end;
+constructor THKCollection.Create(ADB: THako; const AName: string); begin inherited Create; FDB := ADB; FName := AName; end;
+function THKCollection.Doc(const DocID: string): THKDocumentRef; begin Result := THKDocumentRef.Create(FDB, FName, DocID); end;
+function THKCollection.Query: THKQuery; begin Result := THKQuery.Create(FDB, FName); end;
+function THKCollection.WhereEqStr(const Field, Value: string): THKQuery; begin Result := Query.WhereEqStr(Field, Value); end;
+function THKCollection.WhereEqInt(const Field: string; Value: Int64): THKQuery; begin Result := Query.WhereEqInt(Field, Value); end;
+function THKCollection.Match(const Field, Value: string): THKQuery; begin Result := Query.Match(Field, Value); end;
+function THKCollection.Limit(ACount: NativeUInt): THKQuery; begin Result := Query.Limit(ACount); end;
 
-{ TFLNetSyncer }
+{ THKNetSyncer }
 
-constructor TFLNetSyncer.Create(ADBHandle: PFL_Engine; const Name, RoomKey: string);
+constructor THKNetSyncer.Create(ADBHandle: PHK_Engine; const Name, RoomKey: string);
 begin
   inherited Create;
   FHandle := hk_net_syncer_new(ADBHandle, PChar(Name), PChar(RoomKey));
@@ -1157,30 +1157,30 @@ begin
     raise Exception.Create('CreateNetSyncer failed: ' + string(hk_last_error));
 end;
 
-destructor TFLNetSyncer.Destroy;
+destructor THKNetSyncer.Destroy;
 begin
   if FHandle <> nil then hk_net_syncer_free(FHandle);
   inherited;
 end;
 
-procedure TFLNetSyncer.Start(APort: Word);
+procedure THKNetSyncer.Start(APort: Word);
 begin
   CheckStatus(hk_net_syncer_start(FHandle, APort), 'NetSyncStart');
 end;
 
-procedure TFLNetSyncer.SetDiscoveryMode(AMode: TFLDiscoveryMode);
+procedure THKNetSyncer.SetDiscoveryMode(AMode: THKDiscoveryMode);
 begin
   CheckStatus(hk_net_syncer_set_discovery(FHandle, Ord(AMode)), 'NetSyncSetDiscovery');
 end;
 
-function TFLNetSyncer.StatusJSON: string;
+function THKNetSyncer.StatusJSON: string;
 begin
   Result := ConsumeCString(hk_net_syncer_status(FHandle));
 end;
 
-{ TFLCloudSync }
+{ THKCloudSync }
 
-constructor TFLCloudSync.Create(ADBHandle: PFL_Engine; Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
+constructor THKCloudSync.Create(ADBHandle: PHK_Engine; Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
 begin
   inherited Create;
   FHandle := hk_cloud_sync_new(ADBHandle, Ord(Mode), PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
@@ -1188,7 +1188,7 @@ begin
     raise Exception.Create('CreateCloudSyncer failed: ' + string(hk_last_error));
 end;
 
-constructor TFLCloudSync.CreateServer(ADBHandle: PFL_Engine; const ServerID, AuthToken: string);
+constructor THKCloudSync.CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken: string);
 begin
   inherited Create;
   FHandle := hk_cloud_sync_server_new(ADBHandle, PChar(ServerID), PChar(AuthToken));
@@ -1196,7 +1196,7 @@ begin
     raise Exception.Create('CreateCloudServerSyncer failed: ' + string(hk_last_error));
 end;
 
-constructor TFLCloudSync.CreateClient(ADBHandle: PFL_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
+constructor THKCloudSync.CreateClient(ADBHandle: PHK_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
 begin
   inherited Create;
   FHandle := hk_cloud_sync_client_new(ADBHandle, PChar(ClientID), PChar(RoomName), PChar(RoomKey), PChar(AuthToken));
@@ -1204,30 +1204,30 @@ begin
     raise Exception.Create('CreateCloudClientSyncer failed: ' + string(hk_last_error));
 end;
 
-destructor TFLCloudSync.Destroy;
+destructor THKCloudSync.Destroy;
 begin
   if FHandle <> nil then hk_cloud_sync_free(FHandle);
   inherited;
 end;
 
-procedure TFLCloudSync.Start(const Address: string);
+procedure THKCloudSync.Start(const Address: string);
 begin
   CheckStatus(hk_cloud_sync_start(FHandle, PChar(Address)), 'CloudSyncStart');
 end;
 
-function TFLCloudSync.StatusJSON: string;
+function THKCloudSync.StatusJSON: string;
 begin
   Result := ConsumeCString(hk_cloud_sync_status(FHandle));
 end;
 
-procedure TFLCloudSync.Stop;
+procedure THKCloudSync.Stop;
 begin
   hk_cloud_sync_stop(FHandle);
 end;
-procedure TFLCollection.CreateIndex(const Field: string); begin CheckStatus(hk_engine_create_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateIndex'); end;
-procedure TFLCollection.CreateFTSIndex(const Field: string); begin CheckStatus(hk_engine_create_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateFTSIndex'); end;
+procedure THKCollection.CreateIndex(const Field: string); begin CheckStatus(hk_engine_create_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateIndex'); end;
+procedure THKCollection.CreateFTSIndex(const Field: string); begin CheckStatus(hk_engine_create_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateFTSIndex'); end;
 
-procedure TFLCollection.CreateCompositeIndex(const Fields: array of string);
+procedure THKCollection.CreateCompositeIndex(const Fields: array of string);
 var I: Integer; S: string;
 begin
   S := '[';
@@ -1239,66 +1239,66 @@ begin
   CheckStatus(hk_engine_create_index(FDB.Handle, PChar(FName), PChar(S)), 'CreateCompositeIndex');
 end;
 
-function TFLCollection.ListIndexes: string;
+function THKCollection.ListIndexes: string;
 begin Result := ConsumeCString(hk_engine_list_indexes(FDB.Handle, PChar(FName))); end;
 
-{ TFireLite }
+{ THako }
 
-constructor TFireLite.Create(const DBPath: string); begin inherited Create; FHandle := hk_engine_open(PChar(DBPath)); end;
-constructor TFireLite.Create(const DBPath: string; AConfig: TFLConfig); begin inherited Create; FHandle := hk_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; end;
-destructor TFireLite.Destroy; begin if FHandle <> nil then hk_engine_free(FHandle); inherited; end;
-function TFireLite.Collection(const Name: string): TFLCollection; begin Result := TFLCollection.Create(Self, Name); end;
-function TFireLite.StartBatch: TFLBatch; begin Result := TFLBatch.Create(FHandle); end;
-function TFireLite.StartTransaction: TFLTransaction; begin Result := TFLTransaction.Create(FHandle); end;
-procedure TFireLite.SetCollectionLocal(const ACollection: string; Local: Boolean);
+constructor THako.Create(const DBPath: string); begin inherited Create; FHandle := hk_engine_open(PChar(DBPath)); end;
+constructor THako.Create(const DBPath: string; AConfig: THKConfig); begin inherited Create; FHandle := hk_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; end;
+destructor THako.Destroy; begin if FHandle <> nil then hk_engine_free(FHandle); inherited; end;
+function THako.Collection(const Name: string): THKCollection; begin Result := THKCollection.Create(Self, Name); end;
+function THako.StartBatch: THKBatch; begin Result := THKBatch.Create(FHandle); end;
+function THako.StartTransaction: THKTransaction; begin Result := THKTransaction.Create(FHandle); end;
+procedure THako.SetCollectionLocal(const ACollection: string; Local: Boolean);
 var L: cint32;
 begin
   if Local then L := 1 else L := 0;
   CheckStatus(hk_engine_set_collection_local(FHandle, PChar(ACollection), L), 'SetCollectionLocal');
 end;
-procedure TFireLite.ReplicateKey(const ACollection, ADocID: string);
+procedure THako.ReplicateKey(const ACollection, ADocID: string);
 begin
   CheckStatus(hk_engine_replicate_key(FHandle, PChar(ACollection), PChar(ADocID)), 'ReplicateKey');
 end;
-procedure TFireLite.ReplicateCollection(const ACollection: string);
+procedure THako.ReplicateCollection(const ACollection: string);
 begin
   CheckStatus(hk_engine_replicate_collection(FHandle, PChar(ACollection)), 'ReplicateCollection');
 end;
-function TFireLite.VacuumCollection(const ACollection: string): Integer;
+function THako.VacuumCollection(const ACollection: string): Integer;
 var R: cint32;
 begin
   R := hk_engine_vacuum_collection(FHandle, PChar(ACollection));
   if R < 0 then CheckStatus(R, 'VacuumCollection');
   Result := R;
 end;
-function TFireLite.CreateNetSyncer(const Name, RoomKey: string): TFLNetSyncer; begin Result := TFLNetSyncer.Create(FHandle, Name, RoomKey); end;
-function TFireLite.CreateCloudSyncer(Mode: TFLCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.Create(FHandle, Mode, ClientID, RoomName, RoomKey, AuthToken); end;
-function TFireLite.CreateCloudServerSyncer(const ServerID, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.CreateServer(FHandle, ServerID, AuthToken); end;
-function TFireLite.CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): TFLCloudSync; begin Result := TFLCloudSync.CreateClient(FHandle, ClientID, RoomName, RoomKey, AuthToken); end;
-function TFireLite.Backup(const Path: string): Integer; begin Result := hk_engine_backup(FHandle, PChar(Path)); end;
-procedure TFireLite.Compact; begin CheckStatus(hk_engine_compact(FHandle), 'Compact'); end;
-function TFireLite.IsIndexesReady: Boolean; begin Result := hk_engine_is_indexes_ready(FHandle); end;
+function THako.CreateNetSyncer(const Name, RoomKey: string): THKNetSyncer; begin Result := THKNetSyncer.Create(FHandle, Name, RoomKey); end;
+function THako.CreateCloudSyncer(Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.Create(FHandle, Mode, ClientID, RoomName, RoomKey, AuthToken); end;
+function THako.CreateCloudServerSyncer(const ServerID, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.CreateServer(FHandle, ServerID, AuthToken); end;
+function THako.CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.CreateClient(FHandle, ClientID, RoomName, RoomKey, AuthToken); end;
+function THako.Backup(const Path: string): Integer; begin Result := hk_engine_backup(FHandle, PChar(Path)); end;
+procedure THako.Compact; begin CheckStatus(hk_engine_compact(FHandle), 'Compact'); end;
+function THako.IsIndexesReady: Boolean; begin Result := hk_engine_is_indexes_ready(FHandle); end;
 
-function TFireLite.GetView(const Col, ID: string): TFLViewDoc;
-var H: PFL_ViewDoc;
+function THako.GetView(const Col, ID: string): THKViewDoc;
+var H: PHK_ViewDoc;
 begin
   H := hk_view_get(FHandle, PChar(Col), PChar(ID));
   if H = nil then Exit(nil);
-  Result := TFLViewDoc.Create(H);
+  Result := THKViewDoc.Create(H);
 end;
-procedure TFireLite.SnapshotIndices; begin CheckStatus(hk_engine_snapshot_indices(FHandle), 'SnapshotIndices'); end;
-function TFireLite.ListIndexes(const ACollection: string): string; begin Result := ConsumeCString(hk_engine_list_indexes(FHandle, PChar(ACollection))); end;
-function TFireLite.GetAuditLog: string; begin Result := ConsumeCString(hk_engine_get_audit_log(FHandle)); end;
-function TFireLite.InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: TFLDocument): Integer;
+procedure THako.SnapshotIndices; begin CheckStatus(hk_engine_snapshot_indices(FHandle), 'SnapshotIndices'); end;
+function THako.ListIndexes(const ACollection: string): string; begin Result := ConsumeCString(hk_engine_list_indexes(FHandle, PChar(ACollection))); end;
+function THako.GetAuditLog: string; begin Result := ConsumeCString(hk_engine_get_audit_log(FHandle)); end;
+function THako.InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: THKDocument): Integer;
 begin Result := hk_engine_insert_subdoc(FHandle, PChar(Col), PChar(ID), PChar(SubCol), PChar(SubID), Doc.Handle); end;
-function TFireLite.GetByRef(Doc: TFLDocument; const FieldKey: string): TFLDocument;
+function THako.GetByRef(Doc: THKDocument; const FieldKey: string): THKDocument;
 var H: PHK_Doc;
 begin
   H := hk_engine_get_by_ref(FHandle, Doc.Handle, PChar(FieldKey));
   if H = nil then Exit(nil);
-  Result := TFLDocument.CreateFromHandle(H, True);
+  Result := THKDocument.CreateFromHandle(H, True);
 end;
-procedure TFireLite.CreateCompositeIndex(const ACollection: string; const Fields: array of string);
+procedure THako.CreateCompositeIndex(const ACollection: string; const Fields: array of string);
 var I: Integer; S: string;
 begin
   S := '[';
@@ -1309,7 +1309,7 @@ begin
   S := S + ']';
   CheckStatus(hk_engine_create_index(FHandle, PChar(ACollection), PChar(S)), 'CreateCompositeIndex');
 end;
-function TFireLite.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
-function TFireLite.GetStats: string; begin Result := ConsumeCString(hk_engine_get_stats(FHandle)); end;
+function THako.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
+function THako.GetStats: string; begin Result := ConsumeCString(hk_engine_get_stats(FHandle)); end;
 
 end.

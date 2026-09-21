@@ -2,9 +2,9 @@
 <CONFIG>
   <Package Version="5">
     <PathDelim Value="\"/>
-    <Name Value="FireLitePkg"/>
+    <Name Value="HakoPkg"/>
     <Type Value="RunTime"/>
-    <Author Value="FireLite contributors"/>
+    <Author Value="Hako contributors"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -17,21 +17,21 @@
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
     </CompilerOptions>
-    <Description Value="FireLite embedded document database bindings for Lazarus (runtime). Raw C-FFI layer (FireLiteRaw), high-level OO engine (FireLite) and drop-on-form component class (TFireLiteComponent). Requires the firelite shared library (firelite.dll / libfirelite.so / libfirelite.dylib). Add as a project requirement to use; install FireLiteDesign.lpk for the component palette."/>
+    <Description Value="Hako embedded document database bindings for Lazarus (runtime). Raw C-FFI layer (HakoRaw), high-level OO engine (Hako) and drop-on-form component class (THakoComponent). Requires the HakoDB shared library (hakodb.dll / libhakodb.so / libhakodb.dylib). Add as a project requirement to use; install HakoDesign.lpk for the component palette."/>
     <License Value="MIT"/>
     <Version Major="0" Minor="7" Release="9"/>
     <Files Count="3">
       <Item1>
-        <Filename Value="FireLiteRaw.pas"/>
-        <UnitName Value="FireLiteRaw"/>
+        <Filename Value="HakoRaw.pas"/>
+        <UnitName Value="HakoRaw"/>
       </Item1>
       <Item2>
-        <Filename Value="FireLite.pas"/>
-        <UnitName Value="FireLite"/>
+        <Filename Value="Hako.pas"/>
+        <UnitName Value="Hako"/>
       </Item2>
       <Item3>
-        <Filename Value="FireLiteComponent.pas"/>
-        <UnitName Value="FireLiteComponent"/>
+        <Filename Value="HakoComponent.pas"/>
+        <UnitName Value="HakoComponent"/>
       </Item3>
     </Files>
     <RequiredPkgs Count="1">

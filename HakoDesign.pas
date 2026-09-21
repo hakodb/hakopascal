@@ -2,21 +2,21 @@
   This source is only used to compile and install the package.
  }
 
-unit FireLiteDesign;
+unit HakoDesign;
 
 {$warn 5023 off : no warning about unused units}
 interface
 
 uses
-  FireLitePkgReg, LazarusPackageIntf;
+  HakoPkgReg, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
-  RegisterUnit('FireLitePkgReg', @FireLitePkgReg.Register);
+  RegisterUnit('HakoPkgReg', @HakoPkgReg.Register);
 end;
 
 initialization
-  RegisterPackage('FireLiteDesign', @Register);
+  RegisterPackage('HakoDesign', @Register);
 end.
