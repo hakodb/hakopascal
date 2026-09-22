@@ -1,4 +1,6 @@
-# hako-pascal
+# hakopascal
+
+> Part of [**HakoDB**](https://github.com/hakodb/hakodb) — embedded Firestore-style NoSQL document DB in Rust. The engine + C ABI (`hakodb.dll` / `libhakodb.so`) live in `hakodb/hakodb`; this repo holds the Lazarus/Free Pascal wrapper.
 
 Lazarus/Free Pascal wrapper for HakoDB with a Firestore-style API
 plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
@@ -7,7 +9,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 
 ## Compatibility
 
-| hako-pascal | hako core |
+| hakopascal | hako core |
 |---|---|
 | 0.1.1 | `cloud_sync` branch / `v0.8.21`+ release asset |
 
