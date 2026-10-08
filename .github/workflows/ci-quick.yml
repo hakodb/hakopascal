@@ -1,9 +1,9 @@
 # Quick gate for branch protection (required check on main).
 # Compiles the runtime units with stock FPC (no Lazarus needed):
-# Hako.pas + HakoRaw.pas + HakoComponent.pas are pure FCL (no LCL).
-# Excluded deliberately: HakoDesign.pas (IDE design-time package)
-# and linking (HakoRaw binds hakodb.dll at program link, not here —
-# units compile to .ppu standalone).
+# Hako.pas + HakoRaw.pas + HakoComponent.pas + HakoCluster.pas are pure
+# FCL (no LCL). Excluded deliberately: HakoDesign.pas (IDE design-time
+# package) and linking (raw units bind their .dll/.so at program link,
+# not here — units compile to .ppu standalone).
 
 name: ci-quick
 
@@ -27,4 +27,4 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq fpc
 
       - name: compile units
-        run: fpc -Mobjfpc -Sh HakoRaw.pas && fpc -Mobjfpc -Sh -Fu. Hako.pas && fpc -Mobjfpc -Sh -Fu. HakoComponent.pas
+        run: fpc -Mobjfpc -Sh HakoRaw.pas && fpc -Mobjfpc -Sh -Fu. Hako.pas && fpc -Mobjfpc -Sh -Fu. HakoComponent.pas && fpc -Mobjfpc -Sh -Fu. HakoCluster.pas
