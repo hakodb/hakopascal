@@ -343,6 +343,12 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure ReplicateKey(const ACollection, ADocID: string);
     procedure ReplicateCollection(const ACollection: string);
     function VacuumCollection(const ACollection: string): Integer;
+    { Archive (v0.12.3+): move Ids Src -> Dst. Returns the raw JSON
+      report {"moved":[...],"missing":[...]}; refusals raise. }
+    function RelocateDocs(const Src, Dst: string; const Ids: array of string): string;
+    procedure LoadCollection(const ACollection: string);
+    procedure UnloadCollection(const ACollection: string);
+    function UnloadedCollections: TStringList;
     function CreateNetSyncer(const Name, RoomKey: string): THKNetSyncer;
     function CreateCloudSyncer(Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync;
     function CreateCloudServerSyncer(const ServerID, AuthToken: string): THKCloudSync;
@@ -1311,5 +1317,20 @@ begin
 end;
 function THako.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
 function THako.GetStats: string; begin Result := ConsumeCString(hk_engine_get_stats(FHandle)); end;
+function THako.RelocateDocs(const Src, Dst: string; const Ids: array of string): string;
+var I: Integer; J: string;
+begin
+  J := '[';
+  for I := Low(Ids) to High(Ids) do begin
+    if I > Low(Ids) then J := J + ',';
+    J := J + '"' + StringReplace(Ids[I], '"', '\"', [rfReplaceAll]) + '"';
+  end;
+  J := J + ']';
+  Result := ConsumeCString(hk_engine_relocate_docs(FHandle, PChar(Src), PChar(Dst), PChar(J)));
+  if Result = '' then CheckStatus(-1, 'RelocateDocs');
+end;
+procedure THako.LoadCollection(const ACollection: string); begin CheckStatus(hk_engine_load_collection(FHandle, PChar(ACollection)), 'LoadCollection'); end;
+procedure THako.UnloadCollection(const ACollection: string); begin CheckStatus(hk_engine_unload_collection(FHandle, PChar(ACollection)), 'UnloadCollection'); end;
+function THako.UnloadedCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_unloaded_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
 
 end.
