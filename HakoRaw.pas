@@ -112,6 +112,14 @@ function hk_engine_set_collection_local(engine: PHK_Engine; col: PChar; local: c
 function hk_engine_replicate_key(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_replicate_collection(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_vacuum_collection(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+{ Archive (v0.12.3+): move docs src -> dst, reporting moved vs missing as
+  JSON {"moved":[...],"missing":[...]}. Free the report with hk_string_free. }
+function hk_engine_relocate_docs(engine: PHK_Engine; src, dst, ids_json: PChar): PChar; cdecl; external HAKO_LIB;
+{ Load a lazy collection now (0 ok); unload it (-1 unless lazy). }
+function hk_engine_load_collection(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_unload_collection(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+{ Lazy collections currently out of the index, as a JSON array. }
+function hk_engine_unloaded_collections(engine: PHK_Engine): PChar; cdecl; external HAKO_LIB;
 function hk_engine_patch(engine: PHK_Engine; col, doc_id: PChar; updates: PHK_Doc): cint32; cdecl; external HAKO_LIB;
 function hk_engine_get_by_ref(engine: PHK_Engine; doc: PHK_Doc; field_key: PChar): PHK_Doc; cdecl; external HAKO_LIB;
 function hk_engine_insert_subdoc(engine: PHK_Engine; col, id, sub_col, sub_id: PChar; doc: PHK_Doc): cint32; cdecl; external HAKO_LIB;
