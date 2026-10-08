@@ -13,6 +13,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 |---|---|
 | 0.1.1 | `cloud_sync` branch / `v0.8.21`+ release asset |
 | 0.1.2 | `hakodb v0.12.3` (archive: RelocateDocs/Load/Unload/UnloadedCollections) |
+| 0.1.3 | `hakocluster v0.3.5` (new `HakoCluster.pas`: THakoCluster/THakoDatabases) |
 
 ## Setup — native library
 
@@ -35,6 +36,10 @@ Binaries under `native/` are git-ignored.
   - fluent Firestore-like flow (`Collection(...).Doc(...).SetDoc/Get/Delete`, query chaining)
   - deferred blobs (`THKQuery.DeferBlobs`) returning `__blob__` placeholders for list views
   - projection pushdown (`Select([...])`) wired to `hk_query_select_field`
+- `HakoCluster.pas` — cluster surface over `hakocluster.dll`:
+  `THakoCluster` (open/put/get/delete/query/promote/epoch/health/tick),
+  `THakoDatabases` (multidatabase registry). Native lib via
+  `sync-cluster.ps1 -Tag v0.3.5` (N > 1 needs a unix host).
   - advanced filters (`WhereNotIn`, `ArrayContains`, `ArrayContainsAny`, `WhereOr*`) mapped to FFI
   - callback-based `OnSnapshot` via a polling thread with optional main-thread queue dispatch.
 

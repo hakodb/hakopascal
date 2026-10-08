@@ -17,10 +17,10 @@
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
     </CompilerOptions>
-    <Description Value="Hako embedded document database bindings for Lazarus (runtime). Raw C-FFI layer (HakoRaw), high-level OO engine (Hako) and drop-on-form component class (THakoComponent). Requires the HakoDB shared library (hakodb.dll / libhakodb.so / libhakodb.dylib). Add as a project requirement to use; install HakoDesign.lpk for the component palette."/>
+    <Description Value="Hako embedded document database bindings for Lazarus (runtime). Raw C-FFI layer (HakoRaw), high-level OO engine (Hako), cluster surface (HakoCluster) and drop-on-form component class (THakoComponent). Requires the HakoDB shared libraries (hakodb + hakocluster .dll/.so/.dylib). Add as a project requirement to use; install HakoDesign.lpk for the component palette."/>
     <License Value="MIT"/>
     <Version Major="0" Minor="7" Release="9"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="HakoRaw.pas"/>
         <UnitName Value="HakoRaw"/>
@@ -33,6 +33,10 @@
         <Filename Value="HakoComponent.pas"/>
         <UnitName Value="HakoComponent"/>
       </Item3>
+      <Item4>
+        <Filename Value="HakoCluster.pas"/>
+        <UnitName Value="HakoCluster"/>
+      </Item4>
     </Files>
     <RequiredPkgs Count="1">
       <Item1>
