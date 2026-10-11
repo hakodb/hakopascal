@@ -288,6 +288,8 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure CreateIndex(const Field: string);
     procedure CreateFTSIndex(const Field: string);
     procedure CreateCompositeIndex(const Fields: array of string);
+    procedure CreateVectorIndex(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE);
+    function FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
     function ListIndexes: string;
   end;
 
@@ -1232,6 +1234,17 @@ begin
 end;
 procedure THKCollection.CreateIndex(const Field: string); begin CheckStatus(hk_engine_create_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateIndex'); end;
 procedure THKCollection.CreateFTSIndex(const Field: string); begin CheckStatus(hk_engine_create_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'CreateFTSIndex'); end;
+procedure THKCollection.CreateVectorIndex(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE);
+begin CheckStatus(hk_engine_create_vector_index(FDB.Handle, PChar(FName), PChar(Field), cuint32(Dim), cuint32(Metric)), 'CreateVectorIndex'); end;
+function THKCollection.FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
+var P: PChar;
+begin
+  if Length(Vec) = 0 then raise EHakoError.Create('FindNear requires a non-empty query vector');
+  P := hk_engine_find_near(FDB.Handle, PChar(FName), PChar(Field), @Vec[0], SizeUInt(Length(Vec)), K);
+  { Null is a hard error (dim mismatch) — ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('FindNear failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
 
 procedure THKCollection.CreateCompositeIndex(const Fields: array of string);
 var I: Integer; S: string;
