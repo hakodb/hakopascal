@@ -34,6 +34,9 @@ type
 const
   HK_CHANGE_PUT = 1;
   HK_CHANGE_DELETE = 2;
+  { Vector metrics (core 0.13.3+, mirrors Metric::from_u32). }
+  HK_VECTOR_COSINE = 0;
+  HK_VECTOR_L2 = 1;
 
 {$if defined(Windows)}
 const HAKO_LIB = 'hakodb.dll';
@@ -221,6 +224,13 @@ function hk_query_execute_aggregation(engine: PHK_Engine; query: PHK_Query): PCh
 function hk_engine_create_index(engine: PHK_Engine; col, json_def: PChar): cuint32; cdecl; external HAKO_LIB;
 function hk_engine_create_simple_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_create_fts_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
+{ Vector KNN (core 0.13.3+): index over a binary LE-f32 field; one-shot
+  nearest-first search returning an owned JSON array of id/score/doc
+  objects. Free the report with hk_string_free. Null = hard error
+  (dim mismatch, read hk_last_error — never silently empty);
+  unindexed field returns an empty array. }
+function hk_engine_create_vector_index(engine: PHK_Engine; col, field: PChar; dim, metric: cuint32): cint32; cdecl; external HAKO_LIB;
+function hk_engine_find_near(engine: PHK_Engine; col, field: PChar; vec: PSingle; vec_len, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
 
 { Net Sync }
 function hk_net_syncer_new(engine: PHK_Engine; name, room_key: PChar): PHK_NetSyncer; cdecl; external HAKO_LIB;
