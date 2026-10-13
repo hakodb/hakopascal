@@ -290,6 +290,8 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure CreateCompositeIndex(const Fields: array of string);
     procedure CreateVectorIndex(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE);
     function FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
+    procedure CreateTraverseIndex;
+    function FindPaths(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
     function ListIndexes: string;
   end;
 
@@ -1243,6 +1245,18 @@ begin
   P := hk_engine_find_near(FDB.Handle, PChar(FName), PChar(Field), @Vec[0], SizeUInt(Length(Vec)), K);
   { Null is a hard error (dim mismatch) — ConsumeCString would swallow it as ''. }
   if P = nil then raise EHakoError.Create('FindNear failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+procedure THKCollection.CreateTraverseIndex;
+begin CheckStatus(hk_engine_create_traverse_index(FDB.Handle, PChar(FName)), 'CreateTraverseIndex'); end;
+function THKCollection.FindPaths(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
+var P: PChar; E: PChar;
+begin
+  if Edge = '' then E := nil else E := PChar(Edge);
+  P := hk_engine_find_paths(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), E, MaxDepth, K);
+  { Null is a hard error (bad direction/depth, untracked incoming) - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('FindPaths failed: ' + string(hk_last_error));
   Result := ConsumeCString(P);
 end;
 
