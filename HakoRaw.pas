@@ -37,6 +37,10 @@ const
   { Vector metrics (core 0.13.3+, mirrors Metric::from_u32). }
   HK_VECTOR_COSINE = 0;
   HK_VECTOR_L2 = 1;
+  { Traverse directions (core 0.14.0+, mirrors TraverseDir::from_u32). }
+  HK_TRAVERSE_OUT = 0;
+  HK_TRAVERSE_IN = 1;
+  HK_TRAVERSE_BOTH = 2;
 
 {$if defined(Windows)}
 const HAKO_LIB = 'hakodb.dll';
@@ -231,6 +235,14 @@ function hk_engine_create_fts_index(engine: PHK_Engine; col, field: PChar): cint
   unindexed field returns an empty array. }
 function hk_engine_create_vector_index(engine: PHK_Engine; col, field: PChar; dim, metric: cuint32): cint32; cdecl; external HAKO_LIB;
 function hk_engine_find_near(engine: PHK_Engine; col, field: PChar; vec: PSingle; vec_len, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
+{ Graph BFS (core 0.14.0+): opt a collection in as a traversal target;
+  one-shot walk returning an owned JSON array of collection/id/depth/
+  doc objects (BFS order, not ranked). Free the report with
+  hk_string_free. Null = hard error (bad direction/depth, incoming
+  into untracked — read hk_last_error); missing anchor returns an
+  empty array. }
+function hk_engine_create_traverse_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_find_paths(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge: PChar; max_depth, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
 
 { Net Sync }
 function hk_net_syncer_new(engine: PHK_Engine; name, room_key: PChar): PHK_NetSyncer; cdecl; external HAKO_LIB;
