@@ -1,8 +1,8 @@
 # hakopascal
 
-> Part of [**HakoDB**](https://github.com/hakodb/hakodb) — embedded Firestore-style NoSQL document DB in Rust. The engine + C ABI (`hakodb.dll` / `libhakodb.so`) live in `hakodb/hakodb`; this repo holds the Lazarus/Free Pascal wrapper.
+> Part of [**HakoDB**](https://github.com/hakodb/hakodb) — embedded NoSQL document DB with native vector search and multi-plane sync, written in Rust. The engine + C ABI (`hakodb.dll` / `libhakodb.so`) live in `hakodb/hakodb`; this repo holds the Lazarus/Free Pascal wrapper.
 
-Lazarus/Free Pascal wrapper for HakoDB with a Firestore-style API
+Lazarus/Free Pascal wrapper for HakoDB with a fluent document API
 plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 `hakodb.dll`), `Hako.pas` (ergonomic layer), `HakoComponent.pas`
 / `HakoPkg{,Reg}` / `HakoDesign` (Lazarus packages).
@@ -34,7 +34,7 @@ Binaries under `native/` are git-ignored.
 `PHK_Doc`, `PHK_Batch`, `PHK_Query`, `PHK_ResultSet`, `PHK_CloudSync`, …) and `cdecl` imports for Windows/Linux/macOS.
 - `Hako.pas` — object-oriented API: `THako`, `THKCollection`,
 `THKDocument`, `THKQuery`, `THKBatch`, `THKTransaction`, `THKCloudSync`.
-  - fluent Firestore-like flow (`Collection(...).Doc(...).SetDoc/Get/Delete`, query chaining)
+  - fluent document flow (`Collection(...).Doc(...).SetDoc/Get/Delete`, query chaining)
   - deferred blobs (`THKQuery.DeferBlobs`) returning `__blob__` placeholders for list views
   - projection pushdown (`Select([...])`) wired to `hk_query_select_field`
 - `HakoCluster.pas` — cluster surface over `hakocluster.dll`:
