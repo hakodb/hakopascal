@@ -292,6 +292,8 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
     procedure CreateTraverseIndex;
     function FindPaths(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
+    procedure CreateEdgeIndex;
+    function ShortestPaths(const DocID: string; const Via: string; const Weight: string = ''; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
     function ListIndexes: string;
   end;
 
@@ -1257,6 +1259,23 @@ begin
   P := hk_engine_find_paths(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), E, MaxDepth, K);
   { Null is a hard error (bad direction/depth, untracked incoming) - ConsumeCString would swallow it as ''. }
   if P = nil then raise EHakoError.Create('FindPaths failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+procedure THKCollection.CreateEdgeIndex;
+begin CheckStatus(hk_engine_create_edge_index(FDB.Handle, PChar(FName)), 'CreateEdgeIndex'); end;
+function THKCollection.ShortestPaths(const DocID: string; const Via: string; const Weight: string = ''; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  P := hk_engine_shortest_paths(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), OptP(Edge), OptP(Via), OptP(Weight), MaxDepth, K);
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('ShortestPaths failed: ' + string(hk_last_error));
   Result := ConsumeCString(P);
 end;
 
