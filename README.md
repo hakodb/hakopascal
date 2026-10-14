@@ -16,6 +16,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 | 0.1.3 | `hakocluster v0.3.5` (new `HakoCluster.pas`: THakoCluster/THakoDatabases) |
 | 0.1.4 | `hakodb v0.13.3` (`CreateVectorIndex` + `FindNear` KNN over `hk_engine_find_near`) |
 | 0.1.5 | `hakodb v0.14.0` (`CreateTraverseIndex` + `FindPaths` graph BFS over `hk_engine_find_paths`) |
+| 0.1.6 | `hakodb v0.15.0` (Phase B: `CreateEdgeIndex` + `ShortestPaths` Dijkstra) |
 
 ## Setup — native library
 

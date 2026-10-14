@@ -243,6 +243,11 @@ function hk_engine_find_near(engine: PHK_Engine; col, field: PChar; vec: PSingle
   empty array. }
 function hk_engine_create_traverse_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_find_paths(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge: PChar; max_depth, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
+{ Phase B edge collections (core 0.15.0+): register (tracks + indexes
+  _from/_to) and weighted Dijkstra. Same JSON shapes (hits carry cost).
+  Additive fns: find_paths stays frozen. }
+function hk_engine_create_edge_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_shortest_paths(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via, weight: PChar; max_depth, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
 
 { Net Sync }
 function hk_net_syncer_new(engine: PHK_Engine; name, room_key: PChar): PHK_NetSyncer; cdecl; external HAKO_LIB;
