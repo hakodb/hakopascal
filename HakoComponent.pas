@@ -79,8 +79,8 @@ type
     function CreateNetSyncer(const AName, ARoomKey: string): THKNetSyncer;
     { Create a standalone CloudSyncer (not tied to the published properties). }
     function CreateCloudSyncer(AMode: THKCloudSyncMode; const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
-    { Create a room-agnostic cloud SERVER (not tied to the published properties). }
-    function CreateCloudServerSyncer(const AServerID, AAuthToken: string): THKCloudSync;
+    { Create a room-scoped cloud SERVER (not tied to the published properties). }
+    function CreateCloudServerSyncer(const AServerID, AAuthToken, ARoomName, ARoomKey: string): THKCloudSync;
     { Create an offline-first cloud CLIENT for a room (not tied to the published properties). }
     function CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
 
@@ -207,10 +207,10 @@ begin
   Result := FLite.CreateCloudSyncer(AMode, AClientID, ARoomName, ARoomKey, AAuthToken);
 end;
 
-function THakoComponent.CreateCloudServerSyncer(const AServerID, AAuthToken: string): THKCloudSync;
+function THakoComponent.CreateCloudServerSyncer(const AServerID, AAuthToken, ARoomName, ARoomKey: string): THKCloudSync;
 begin
   EnsureOpen;
-  Result := FLite.CreateCloudServerSyncer(AServerID, AAuthToken);
+  Result := FLite.CreateCloudServerSyncer(AServerID, AAuthToken, ARoomName, ARoomKey);
 end;
 
 function THakoComponent.CreateCloudClientSyncer(const AClientID, ARoomName, ARoomKey, AAuthToken: string): THKCloudSync;
