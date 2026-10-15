@@ -313,7 +313,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     FHandle: PHK_CloudSync;
   public
     constructor Create(ADBHandle: PHK_Engine; Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string);
-    constructor CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken: string);
+    constructor CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken, RoomName, RoomKey: string);
     constructor CreateClient(ADBHandle: PHK_Engine; const ClientID, RoomName, RoomKey, AuthToken: string);
     destructor Destroy; override;
     procedure Start(const Address: string);
@@ -357,7 +357,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function UnloadedCollections: TStringList;
     function CreateNetSyncer(const Name, RoomKey: string): THKNetSyncer;
     function CreateCloudSyncer(Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync;
-    function CreateCloudServerSyncer(const ServerID, AuthToken: string): THKCloudSync;
+    function CreateCloudServerSyncer(const ServerID, AuthToken, RoomName, RoomKey: string): THKCloudSync;
     function CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync;
     property Handle: PHK_Engine read FHandle;
   end;
@@ -1200,10 +1200,10 @@ begin
     raise Exception.Create('CreateCloudSyncer failed: ' + string(hk_last_error));
 end;
 
-constructor THKCloudSync.CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken: string);
+constructor THKCloudSync.CreateServer(ADBHandle: PHK_Engine; const ServerID, AuthToken, RoomName, RoomKey: string);
 begin
   inherited Create;
-  FHandle := hk_cloud_sync_server_new(ADBHandle, PChar(ServerID), PChar(AuthToken));
+  FHandle := hk_cloud_sync_server_new(ADBHandle, PChar(ServerID), PChar(AuthToken), PChar(RoomName), PChar(RoomKey));
   if FHandle = nil then
     raise Exception.Create('CreateCloudServerSyncer failed: ' + string(hk_last_error));
 end;
@@ -1325,7 +1325,7 @@ begin
 end;
 function THako.CreateNetSyncer(const Name, RoomKey: string): THKNetSyncer; begin Result := THKNetSyncer.Create(FHandle, Name, RoomKey); end;
 function THako.CreateCloudSyncer(Mode: THKCloudSyncMode; const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.Create(FHandle, Mode, ClientID, RoomName, RoomKey, AuthToken); end;
-function THako.CreateCloudServerSyncer(const ServerID, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.CreateServer(FHandle, ServerID, AuthToken); end;
+function THako.CreateCloudServerSyncer(const ServerID, AuthToken, RoomName, RoomKey: string): THKCloudSync; begin Result := THKCloudSync.CreateServer(FHandle, ServerID, AuthToken, RoomName, RoomKey); end;
 function THako.CreateCloudClientSyncer(const ClientID, RoomName, RoomKey, AuthToken: string): THKCloudSync; begin Result := THKCloudSync.CreateClient(FHandle, ClientID, RoomName, RoomKey, AuthToken); end;
 function THako.Backup(const Path: string): Integer; begin Result := hk_engine_backup(FHandle, PChar(Path)); end;
 procedure THako.Compact; begin CheckStatus(hk_engine_compact(FHandle), 'Compact'); end;

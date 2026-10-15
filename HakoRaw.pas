@@ -258,7 +258,7 @@ procedure hk_net_syncer_free(syncer: PHK_NetSyncer); cdecl; external HAKO_LIB;
 
 { Cloud Sync }
 function hk_cloud_sync_new(engine: PHK_Engine; mode: cint32; client_id, room_name, room_key, auth_token: PChar): PHK_CloudSync; cdecl; external HAKO_LIB;
-function hk_cloud_sync_server_new(engine: PHK_Engine; server_id, auth_token: PChar): PHK_CloudSync; cdecl; external HAKO_LIB;
+function hk_cloud_sync_server_new(engine: PHK_Engine; server_id, auth_token, room_name, room_key: PChar): PHK_CloudSync; cdecl; external HAKO_LIB;
 function hk_cloud_sync_client_new(engine: PHK_Engine; client_id, room_name, room_key, auth_token: PChar): PHK_CloudSync; cdecl; external HAKO_LIB;
 function hk_cloud_sync_start(cloud_sync: PHK_CloudSync; address: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_cloud_sync_status(cloud_sync: PHK_CloudSync): PChar; cdecl; external HAKO_LIB;
