@@ -20,6 +20,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 | 0.1.7 | `hakodb v0.15.3` (native DLL refresh: ring-only TLS + shared sync framing) |
 | 0.1.7 | `hakodb v0.15.3` (patch: ring-only TLS + shared sync framing, fail-closed 256MB frame cap) |
 | 0.1.8 | `hakodb v0.16.0` (server room params: `hk_cloud_sync_server_new` + `CreateCloudServerSyncer` take RoomName/RoomKey) |
+| 0.1.9 | `hakocluster v0.4.0` (native DLL refresh: N+1 sync tailer mesh/cloud) |
 
 ## Setup — native library
 
