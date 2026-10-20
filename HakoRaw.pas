@@ -22,6 +22,8 @@ type
   PHK_RawDoc = Pointer;      // Added in v0.8.3
   PHK_RawResultSet = Pointer;// Added in v0.8.3
   PHK_ViewDoc = Pointer;     // Added in v0.8.11
+  PHK_Pipeline = Pointer;    // Added in v0.15.x (F4)
+  PHK_SocketSync = Pointer;  // Unix only
 
   { Callback for real-time snapshots }
   THK_OnSnapshotCallback = procedure(collection: PChar; path: PChar; kind: cint32; user_data: Pointer); cdecl;
@@ -62,6 +64,16 @@ function hk_engine_list_indexes(engine: PHK_Engine; collection: PChar): PChar; c
 function hk_engine_get_stats(engine: PHK_Engine): PChar; cdecl; external HAKO_LIB;
 function hk_engine_get_audit_log(engine: PHK_Engine): PChar; cdecl; external HAKO_LIB;
 function hk_engine_snapshot_indices(engine: PHK_Engine): cint32; cdecl; external HAKO_LIB;
+{ Quiescence (F5): wait for background work; status is owned JSON. }
+function hk_engine_await_quiescent(engine: PHK_Engine; timeout_ms: QWord): cbool; cdecl; external HAKO_LIB;
+function hk_engine_quiescence_status(engine: PHK_Engine): PChar; cdecl; external HAKO_LIB;
+{ Versioned read (F5): out_version receives the commit version. }
+function hk_engine_get_versioned(engine: PHK_Engine; col, doc_id: PChar; out_version: PQWord): PHK_Doc; cdecl; external HAKO_LIB;
+{ Schemas (F8): schema/list results are owned JSON. }
+function hk_engine_set_schema(engine: PHK_Engine; col, schema_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_get_schema(engine: PHK_Engine; col: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_clear_schema(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_list_schemas(engine: PHK_Engine): PChar; cdecl; external HAKO_LIB;
 
 { Configuration Builder }
 function hk_config_new: PHK_Config; cdecl; external HAKO_LIB;
@@ -78,6 +90,11 @@ procedure hk_config_set_wal_reserve_bytes(config: PHK_Config; bytes: QWord); cde
 procedure hk_config_set_compression(config: PHK_Config; enabled: cbool; level: cint32); cdecl; external HAKO_LIB;
 { Hold background maintenance (deterministic benchmarks). Default on. }
 procedure hk_config_set_background_maintenance(config: PHK_Config; enabled: cbool); cdecl; external HAKO_LIB;
+procedure hk_config_set_group_commit_interval_ms(config: PHK_Config; ms: QWord); cdecl; external HAKO_LIB;
+procedure hk_config_set_page_cache_capacity(config: PHK_Config; capacity: SizeUInt); cdecl; external HAKO_LIB;
+function hk_config_set_sync_excluded(config: PHK_Config; collections_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_config_set_lazy_collections(config: PHK_Config; collections_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_config_set_replication_collections(config: PHK_Config; collections_json: PChar): cint32; cdecl; external HAKO_LIB;
 
 { Real-time Snapshots }
 function hk_engine_watch(engine: PHK_Engine; collection: PChar; callback: THK_OnSnapshotCallback; user_data_ptr: Pointer): PHK_Watch; cdecl; external HAKO_LIB;
@@ -144,6 +161,10 @@ function hk_transaction_get(engine: PHK_Engine; tx: PHK_Transaction; col, id: PC
 function hk_transaction_set(tx: PHK_Transaction; col, id: PChar; doc: PHK_Doc): cint32; cdecl; external HAKO_LIB;
 function hk_transaction_commit(engine: PHK_Engine; tx: PHK_Transaction): cint32; cdecl; external HAKO_LIB;
 procedure hk_transaction_free(tx: PHK_Transaction); cdecl; external HAKO_LIB;
+{ Batched tx read (F5): owned JSON array aligned with ids_json; missing = null. }
+function hk_transaction_get_many(engine: PHK_Engine; tx: PHK_Transaction; col, ids_json: PChar): PChar; cdecl; external HAKO_LIB;
+{ Merge-patch inside the transaction (F5). }
+function hk_transaction_patch(engine: PHK_Engine; tx: PHK_Transaction; col, doc_id, updates_json: PChar): cint32; cdecl; external HAKO_LIB;
 
 { Queries }
 function hk_query_new(collection: PChar): PHK_Query; cdecl; external HAKO_LIB;
@@ -167,12 +188,19 @@ function hk_query_where_in(query: PHK_Query; field: PChar; arr: PHK_Array): cint
 function hk_query_where_not_in(query: PHK_Query; field: PChar; arr: PHK_Array): cint32; cdecl; external HAKO_LIB;
 function hk_query_where_array_contains_any(query: PHK_Query; field: PChar; arr: PHK_Array): cint32; cdecl; external HAKO_LIB;
 function hk_query_where_array_contains(query: PHK_Query; field, value: PChar): cint32; cdecl; external HAKO_LIB;
+{ F3 predicates: value/filters are JSON; near takes an LE-f32 vector. }
+function hk_query_where_array_all_eq(query: PHK_Query; field, value_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_query_where_elem_match(query: PHK_Query; field, filters_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_query_where_near(query: PHK_Query; field: PChar; vec: PSingle; vec_len: SizeUInt): cint32; cdecl; external HAKO_LIB;
+function hk_query_where_traverse(query: PHK_Query; start_col, start_id: PChar; direction: cuint32; edge: PChar; max_depth: SizeUInt): cint32; cdecl; external HAKO_LIB;
 function hk_query_order_by(query: PHK_Query; field: PChar; ascending: cbool): cint32; cdecl; external HAKO_LIB;
 function hk_query_limit(query: PHK_Query; limit: SizeUInt): cint32; cdecl; external HAKO_LIB;
 function hk_query_offset(query: PHK_Query; offset: SizeUInt): cint32; cdecl; external HAKO_LIB;
 function hk_query_select_field(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_defer_blobs(query: PHK_Query; defer: cint32): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
+{ Query plan JSON without executing the scan (F7). Owned string. }
+function hk_query_explain(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 function hk_query_delete(engine: PHK_Engine; query: PHK_Query): cint32; cdecl; external HAKO_LIB;
 function hk_query_delete_local(engine: PHK_Engine; query: PHK_Query): cint32; cdecl; external HAKO_LIB;
 function hk_query_patch(engine: PHK_Engine; query: PHK_Query; patch_doc: PHK_Doc): cint32; cdecl; external HAKO_LIB;
@@ -224,6 +252,19 @@ function hk_query_aggregate_sum(query: PHK_Query; field: PChar): cint32; cdecl; 
 function hk_query_aggregate_avg(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute_aggregation(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 
+{ Aggregation Pipeline (F4) }
+function hk_pipeline_new(collection: PChar): PHK_Pipeline; cdecl; external HAKO_LIB;
+procedure hk_pipeline_free(pipeline: PHK_Pipeline); cdecl; external HAKO_LIB;
+function hk_pipeline_match(pipeline: PHK_Pipeline; query: PHK_Query): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_project(pipeline: PHK_Pipeline; fields_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_sort(pipeline: PHK_Pipeline; field: PChar; ascending: cbool): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_limit(pipeline: PHK_Pipeline; limit: SizeUInt): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_offset(pipeline: PHK_Pipeline; offset: SizeUInt): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_unwind(pipeline: PHK_Pipeline; field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_group(pipeline: PHK_Pipeline; key, accums_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_pipeline_execute(engine: PHK_Engine; pipeline: PHK_Pipeline): PChar; cdecl; external HAKO_LIB;
+function hk_pipeline_execute_to_handles(engine: PHK_Engine; pipeline: PHK_Pipeline): PHK_ResultSet; cdecl; external HAKO_LIB;
+
 { Manual Indexing }
 function hk_engine_create_index(engine: PHK_Engine; col, json_def: PChar): cuint32; cdecl; external HAKO_LIB;
 function hk_engine_create_simple_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
@@ -268,6 +309,22 @@ procedure hk_cloud_sync_free(cloud_sync: PHK_CloudSync); cdecl; external HAKO_LI
 { Errors and Helpers }
 function hk_last_error: PChar; cdecl; external HAKO_LIB;
 procedure hk_string_free(value: PChar); cdecl; external HAKO_LIB;
+{ Retry classification of the last error (F5). }
+function hk_error_last_kind: cint32; cdecl; external HAKO_LIB;
+function hk_error_is_retryable: cbool; cdecl; external HAKO_LIB;
+{ Diagnostics: owned JSON, counters reset on read. }
+function hk_debug_write_stats: PChar; cdecl; external HAKO_LIB;
+procedure hk_log_enable_stderr; cdecl; external HAKO_LIB;
+procedure hk_log_disable_stderr; cdecl; external HAKO_LIB;
+
+{ Unix-domain socket sync (not exported by Windows builds) }
+{$IFDEF UNIX}
+function hk_socket_sync_new(engine: PHK_Engine): PHK_SocketSync; cdecl; external HAKO_LIB;
+function hk_socket_sync_serve(syncer: PHK_SocketSync; path: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_socket_sync_dial(syncer: PHK_SocketSync; path: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_socket_sync_status(syncer: PHK_SocketSync): PChar; cdecl; external HAKO_LIB;
+procedure hk_socket_sync_free(syncer: PHK_SocketSync); cdecl; external HAKO_LIB;
+{$ENDIF}
 
 implementation
 end.
