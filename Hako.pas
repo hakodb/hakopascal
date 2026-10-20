@@ -69,6 +69,11 @@ type
     function SetBlobThreshold(ThresholdBytes: NativeUInt): THKConfig;
     function SetCompression(Enabled: Boolean; Level: Integer = 3): THKConfig;
     function SetBackgroundMaintenance(Enabled: Boolean): THKConfig;
+    function SetGroupCommitIntervalMs(MS: QWord): THKConfig;
+    function SetPageCacheCapacity(Capacity: NativeUInt): THKConfig;
+    function SetSyncExcluded(const Collections: array of string): THKConfig;
+    function SetLazyCollections(const Collections: array of string): THKConfig;
+    function SetReplicationCollections(const Collections: array of string): THKConfig;
     property Handle: PHK_Config read FHandle;
   end;
 
@@ -122,6 +127,10 @@ type
     constructor Create(ADBHandle: PHK_Engine);
     destructor Destroy; override;
     function Get(const Col, ID: string): THKDocument;
+    { Batched read (F5): JSON array aligned with IDs; missing ids are null. }
+    function GetMany(const Col: string; const IDs: array of string): string;
+    { Merge-patch inside the transaction (F5). }
+    procedure Patch(const Col, ID, UpdatesJSON: string);
     procedure SetDoc(const Col, ID: string; Doc: THKDocument);
     procedure Commit;
   end;
@@ -197,6 +206,11 @@ FDeferBlobs: Boolean;
     FStartAfterRaw: PHK_RawDoc;
     FWhereOrStr: array of record Field, Value: string; end;
     FWhereOrInt: array of record Field: string; Value: Int64; end;
+    FWhereJSON: array of record Field, Op, Data: string; end;
+    FNearField: string;
+    FNearVec: array of Single;
+    FTraverseStartCol, FTraverseStartID, FTraverseEdge: string;
+    FTraverseDir, FTraverseMaxDepth: NativeUInt;
 
     function BuildNativeQuery: PHK_Query;
   public
@@ -240,6 +254,15 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
 
     function WhereOrStr(const Field, Value: string): THKQuery;
     function WhereOrInt(const Field: string; Value: Int64): THKQuery;
+
+    { F3 predicates. ValueJSON/FiltersJSON follow the core wire shapes:
+      filters = [{"field":"qty","op":"gt","value":2}, ...]. }
+    function WhereArrayAllEq(const Field, ValueJSON: string): THKQuery;
+    function WhereElemMatch(const Field, FiltersJSON: string): THKQuery;
+    function WhereNear(const Field: string; const Vec: array of Single): THKQuery;
+    function WhereTraverse(const StartCol, StartID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 3): THKQuery;
+    { Query plan JSON without executing the scan (F7). }
+    function Explain: string;
 
     function Count: Int64;
     function Sum(const Field: string): Double;
@@ -336,6 +359,23 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function Backup(const Path: string): Integer;
     procedure Compact;
     function IsIndexesReady: Boolean;
+    { F8 schemas. SetSchema/ListSchemas take/give JSON; GetSchema returns ''
+      when the collection has no schema. }
+    procedure SetSchema(const ACollection, SchemaJSON: string);
+    function GetSchema(const ACollection: string): string;
+    procedure ClearSchema(const ACollection: string);
+    function ListSchemas: string;
+    { F5 versioned read; Version receives the commit version. }
+    function GetVersioned(const Col, ID: string; out Version: QWord): THKDocument;
+    { F5 quiescence: wait for background work, bounded by timeout. }
+    function AwaitQuiescent(TimeoutMs: QWord = 5000): Boolean;
+    function QuiescenceStatus: string;
+    { Diagnostics / retry classification (thread-local last error). }
+    function DebugWriteStats: string;
+    function ErrorLastKind: Integer;
+    function IsRetryable: Boolean;
+    procedure EnableStderrLog;
+    procedure DisableStderrLog;
     { Borrowed point view (v0.8.11+): lazy pulls, no decode. Free it.
       Returns nil when missing. }
     function GetView(const Col, ID: string): THKViewDoc;
@@ -380,6 +420,17 @@ begin
     P := hk_last_error;
     raise EHakoError.CreateFmt('%s failed: %s', [Context, string(P)]);
   end;
+end;
+
+function JSONStringArray(const Values: array of string): string;
+var I: Integer;
+begin
+  Result := '[';
+  for I := Low(Values) to High(Values) do begin
+    if I > Low(Values) then Result := Result + ',';
+    Result := Result + '"' + Values[I] + '"';
+  end;
+  Result := Result + ']';
 end;
 
 { THKArray }
@@ -485,6 +536,36 @@ end;
 function THKConfig.SetBackgroundMaintenance(Enabled: Boolean): THKConfig;
 begin
   hk_config_set_background_maintenance(FHandle, Enabled);
+  Result := Self;
+end;
+
+function THKConfig.SetGroupCommitIntervalMs(MS: QWord): THKConfig;
+begin
+  hk_config_set_group_commit_interval_ms(FHandle, MS);
+  Result := Self;
+end;
+
+function THKConfig.SetPageCacheCapacity(Capacity: NativeUInt): THKConfig;
+begin
+  hk_config_set_page_cache_capacity(FHandle, Capacity);
+  Result := Self;
+end;
+
+function THKConfig.SetSyncExcluded(const Collections: array of string): THKConfig;
+begin
+  CheckStatus(hk_config_set_sync_excluded(FHandle, PChar(JSONStringArray(Collections))), 'SetSyncExcluded');
+  Result := Self;
+end;
+
+function THKConfig.SetLazyCollections(const Collections: array of string): THKConfig;
+begin
+  CheckStatus(hk_config_set_lazy_collections(FHandle, PChar(JSONStringArray(Collections))), 'SetLazyCollections');
+  Result := Self;
+end;
+
+function THKConfig.SetReplicationCollections(const Collections: array of string): THKConfig;
+begin
+  CheckStatus(hk_config_set_replication_collections(FHandle, PChar(JSONStringArray(Collections))), 'SetReplicationCollections');
   Result := Self;
 end;
 
@@ -602,6 +683,16 @@ begin
   H := hk_transaction_get(FDBHandle, FHandle, PChar(Col), PChar(ID));
   if H = nil then Exit(nil);
   Result := THKDocument.CreateFromHandle(H, True);
+end;
+
+function THKTransaction.GetMany(const Col: string; const IDs: array of string): string;
+begin
+  Result := ConsumeCString(hk_transaction_get_many(FDBHandle, FHandle, PChar(Col), PChar(JSONStringArray(IDs))));
+end;
+
+procedure THKTransaction.Patch(const Col, ID, UpdatesJSON: string);
+begin
+  CheckStatus(hk_transaction_patch(FDBHandle, FHandle, PChar(Col), PChar(ID), PChar(UpdatesJSON)), 'TxPatch');
 end;
 
 procedure THKTransaction.SetDoc(const Col, ID: string; Doc: THKDocument);
@@ -823,6 +914,16 @@ begin
         else hk_array_append_str(TmpArr, PChar(FWhereArrayContainsAny[I].Data.Items[J].AsString));
       hk_query_where_array_contains_any(Result, PChar(FWhereArrayContainsAny[I].Field), TmpArr);
     end;
+    for I := Low(FWhereJSON) to High(FWhereJSON) do begin
+      if FWhereJSON[I].Op = 'array_all_eq' then
+        hk_query_where_array_all_eq(Result, PChar(FWhereJSON[I].Field), PChar(FWhereJSON[I].Data))
+      else
+        hk_query_where_elem_match(Result, PChar(FWhereJSON[I].Field), PChar(FWhereJSON[I].Data));
+    end;
+    if (FNearField <> '') and (Length(FNearVec) > 0) then
+      hk_query_where_near(Result, PChar(FNearField), PSingle(@FNearVec[0]), Length(FNearVec));
+    if FTraverseStartCol <> '' then
+      hk_query_where_traverse(Result, PChar(FTraverseStartCol), PChar(FTraverseStartID), FTraverseDir, PChar(FTraverseEdge), FTraverseMaxDepth);
     
     if FStartAt <> nil then hk_query_start_at(Result, FStartAt);
     if FStartAfter <> nil then hk_query_start_after(Result, FStartAfter);
@@ -861,6 +962,9 @@ end;
 
 function THKQuery.GetJSON: string;
 var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
+
+function THKQuery.Explain: string;
+var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_explain(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
 
 { THKRawDoc }
 
@@ -1019,6 +1123,43 @@ begin
   SetLength(FWhereOrInt, Length(FWhereOrInt) + 1);
   FWhereOrInt[High(FWhereOrInt)].Field := Field;
   FWhereOrInt[High(FWhereOrInt)].Value := Value;
+  Result := Self;
+end;
+
+function THKQuery.WhereArrayAllEq(const Field, ValueJSON: string): THKQuery;
+begin
+  SetLength(FWhereJSON, Length(FWhereJSON) + 1);
+  FWhereJSON[High(FWhereJSON)].Field := Field;
+  FWhereJSON[High(FWhereJSON)].Op := 'array_all_eq';
+  FWhereJSON[High(FWhereJSON)].Data := ValueJSON;
+  Result := Self;
+end;
+
+function THKQuery.WhereElemMatch(const Field, FiltersJSON: string): THKQuery;
+begin
+  SetLength(FWhereJSON, Length(FWhereJSON) + 1);
+  FWhereJSON[High(FWhereJSON)].Field := Field;
+  FWhereJSON[High(FWhereJSON)].Op := 'elem_match';
+  FWhereJSON[High(FWhereJSON)].Data := FiltersJSON;
+  Result := Self;
+end;
+
+function THKQuery.WhereNear(const Field: string; const Vec: array of Single): THKQuery;
+var I: Integer;
+begin
+  FNearField := Field;
+  SetLength(FNearVec, Length(Vec));
+  for I := Low(Vec) to High(Vec) do FNearVec[I] := Vec[I];
+  Result := Self;
+end;
+
+function THKQuery.WhereTraverse(const StartCol, StartID: string; Direction: LongWord; const Edge: string; MaxDepth: NativeUInt): THKQuery;
+begin
+  FTraverseStartCol := StartCol;
+  FTraverseStartID := StartID;
+  FTraverseDir := Direction;
+  FTraverseEdge := Edge;
+  FTraverseMaxDepth := MaxDepth;
   Result := Self;
 end;
 
@@ -1378,5 +1519,52 @@ end;
 procedure THako.LoadCollection(const ACollection: string); begin CheckStatus(hk_engine_load_collection(FHandle, PChar(ACollection)), 'LoadCollection'); end;
 procedure THako.UnloadCollection(const ACollection: string); begin CheckStatus(hk_engine_unload_collection(FHandle, PChar(ACollection)), 'UnloadCollection'); end;
 function THako.UnloadedCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_unloaded_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
+
+{ F8 schemas }
+
+procedure THako.SetSchema(const ACollection, SchemaJSON: string);
+begin CheckStatus(hk_engine_set_schema(FHandle, PChar(ACollection), PChar(SchemaJSON)), 'SetSchema'); end;
+
+function THako.GetSchema(const ACollection: string): string;
+begin Result := ConsumeCString(hk_engine_get_schema(FHandle, PChar(ACollection))); end;
+
+procedure THako.ClearSchema(const ACollection: string);
+begin CheckStatus(hk_engine_clear_schema(FHandle, PChar(ACollection)), 'ClearSchema'); end;
+
+function THako.ListSchemas: string;
+begin Result := ConsumeCString(hk_engine_list_schemas(FHandle)); end;
+
+{ F5 versioned read / quiescence / diagnostics }
+
+function THako.GetVersioned(const Col, ID: string; out Version: QWord): THKDocument;
+var H: PHK_Doc; V: QWord;
+begin
+  V := 0;
+  H := hk_engine_get_versioned(FHandle, PChar(Col), PChar(ID), @V);
+  Version := V;
+  if H = nil then Exit(nil);
+  Result := THKDocument.CreateFromHandle(H, True);
+end;
+
+function THako.AwaitQuiescent(TimeoutMs: QWord): Boolean;
+begin Result := hk_engine_await_quiescent(FHandle, TimeoutMs); end;
+
+function THako.QuiescenceStatus: string;
+begin Result := ConsumeCString(hk_engine_quiescence_status(FHandle)); end;
+
+function THako.DebugWriteStats: string;
+begin Result := ConsumeCString(hk_debug_write_stats); end;
+
+function THako.ErrorLastKind: Integer;
+begin Result := hk_error_last_kind; end;
+
+function THako.IsRetryable: Boolean;
+begin Result := hk_error_is_retryable; end;
+
+procedure THako.EnableStderrLog;
+begin hk_log_enable_stderr; end;
+
+procedure THako.DisableStderrLog;
+begin hk_log_disable_stderr; end;
 
 end.
