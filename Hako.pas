@@ -180,6 +180,15 @@ type
     function GetBool(const Key: string; out Value: Boolean): Boolean;
     function GetStr(const Key: string): string;
     function GetBytes(const Key: string): TBytes;
+    { P2 (core 0.18): dotted-path pulls ("a.b.c"; one segment = top-level). }
+    function GetPathInt(const Path: string; out Value: Int64): Boolean;
+    function GetPathFloat(const Path: string; out Value: Double): Boolean;
+    function GetPathBool(const Path: string; out Value: Boolean): Boolean;
+    function GetPathStr(const Path: string): string;
+    function GetPathBytes(const Path: string): TBytes;
+    { P2 (core 0.18): JSON from the pinned bytes, no owned decode. Blob
+      links stay unresolved. }
+    function ToJSON: string;
     { Full owned decode. Free the result. }
     function ToDoc(const DocID: string): THKDocument;
     property Handle: PHK_ViewDoc read FHandle;
@@ -275,6 +284,9 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function Walk(Callback: THK_WalkCallback; UserData: Pointer): Int64;
     { Lazy view walk (v0.8.11+): each row lent as a borrowed view handle. }
     function WalkView(Callback: THK_ViewWalkCallback; UserData: Pointer): Int64;
+    { P2 (core 0.18): walk with JSON rows (bytes are UTF-8 JSON). Rows are
+      materialized: not the zero-alloc walk. }
+    function WalkJSON(Callback: THK_WalkCallback; UserData: Pointer): Int64;
     function Delete: Int64;
     function DeleteLocal: Int64;
     function Patch(Doc: THKDocument): Int64;
@@ -379,6 +391,10 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     { Borrowed point view (v0.8.11+): lazy pulls, no decode. Free it.
       Returns nil when missing. }
     function GetView(const Col, ID: string): THKViewDoc;
+    { P2 (core 0.18): point-read JSON from the pinned bytes, no owned doc.
+      Blob links resolved; bytes match Get + THKDocument.ToJSON. Returns ''
+      when the document is missing. }
+    function GetJSON(const Col, ID: string): string;
     procedure SnapshotIndices;
     function InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: THKDocument): Integer;
     function GetByRef(Doc: THKDocument; const FieldKey: string): THKDocument;
@@ -961,7 +977,8 @@ var Q: PHK_Query; J: TJSONObject; begin
 end;
 
 function THKQuery.GetJSON: string;
-var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
+{ P2 (core 0.18): raw fast path — bytes identical to hk_query_execute. }
+var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute_json(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
 
 function THKQuery.Explain: string;
 var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_explain(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
@@ -1049,6 +1066,15 @@ begin
   finally hk_query_free(Q); end;
 end;
 
+function THKQuery.WalkJSON(Callback: THK_WalkCallback; UserData: Pointer): Int64;
+var Q: PHK_Query;
+begin
+  Q := BuildNativeQuery; try
+    Result := hk_cursor_walk_json(FDB.Handle, Q, Callback, UserData);
+    if Result < 0 then raise EHakoError.Create('hk_cursor_walk_json failed: ' + string(hk_last_error));
+  finally hk_query_free(Q); end;
+end;
+
 { THKViewDoc }
 
 constructor THKViewDoc.Create(AHandle: PHK_ViewDoc);
@@ -1101,6 +1127,48 @@ begin
   SetLength(Result, L);
   if L > 0 then Move(P^, Result[0], L);
 end;
+
+function THKViewDoc.GetPathInt(const Path: string; out Value: Int64): Boolean;
+var V: Int64;
+begin
+  Result := hk_view_get_path_int(FHandle, PChar(Path), @V);
+  if Result then Value := V;
+end;
+
+function THKViewDoc.GetPathFloat(const Path: string; out Value: Double): Boolean;
+var V: Double;
+begin
+  Result := hk_view_get_path_float(FHandle, PChar(Path), @V);
+  if Result then Value := V;
+end;
+
+function THKViewDoc.GetPathBool(const Path: string; out Value: Boolean): Boolean;
+var R: cint32;
+begin
+  R := hk_view_get_path_bool(FHandle, PChar(Path));
+  Result := R >= 0;
+  if Result then Value := R <> 0;
+end;
+
+function THKViewDoc.GetPathStr(const Path: string): string;
+var P: PChar; L: SizeUInt;
+begin
+  P := hk_view_get_path_str(FHandle, PChar(Path), @L);
+  if (P = nil) or (L = 0) then Exit('');
+  SetString(Result, P, L);
+end;
+
+function THKViewDoc.GetPathBytes(const Path: string): TBytes;
+var P: PByte; L: SizeUInt;
+begin
+  P := hk_view_get_path_bytes(FHandle, PChar(Path), @L);
+  if P = nil then Exit(nil);
+  SetLength(Result, L);
+  if L > 0 then Move(P^, Result[0], L);
+end;
+
+function THKViewDoc.ToJSON: string;
+begin Result := ConsumeCString(hk_view_to_json(FHandle)); end;
 
 function THKViewDoc.ToDoc(const DocID: string): THKDocument;
 var H: PHK_Doc;
@@ -1479,6 +1547,9 @@ begin
   if H = nil then Exit(nil);
   Result := THKViewDoc.Create(H);
 end;
+
+function THako.GetJSON(const Col, ID: string): string;
+begin Result := ConsumeCString(hk_engine_get_json(FHandle, PChar(Col), PChar(ID))); end;
 procedure THako.SnapshotIndices; begin CheckStatus(hk_engine_snapshot_indices(FHandle), 'SnapshotIndices'); end;
 function THako.ListIndexes(const ACollection: string): string; begin Result := ConsumeCString(hk_engine_list_indexes(FHandle, PChar(ACollection))); end;
 function THako.GetAuditLog: string; begin Result := ConsumeCString(hk_engine_get_audit_log(FHandle)); end;

@@ -22,6 +22,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 | 0.1.8 | `hakodb v0.16.0` (server room params: `hk_cloud_sync_server_new` + `CreateCloudServerSyncer` take RoomName/RoomKey) |
 | 0.1.9 | `hakocluster v0.4.0` (native DLL refresh: N+1 sync tailer mesh/cloud) |
 | 0.1.10 | `hakodb v0.16.5` (schemas, versioned reads, quiescence, explain, elemMatch/allEq/near/traverse, full C-ABI parity) |
+| 0.1.11 | `hakodb v0.18.0` (P2: `THako.GetJSON`, `THKQuery.GetJSON` fast path + `WalkJSON`, view dotted-path pulls, `THKViewDoc.ToJSON`) |
 
 ## Setup — native library
 
@@ -29,8 +30,8 @@ The units link `hakodb.dll` by filename: put it next to your binary,
 on `PATH`, or under `./native/` (populated by the sync script):
 
 ```powershell
-.\sync-native.ps1 -CoreDir C:\Dev\libs\firelite
-.\sync-native.ps1 -Tag v0.8.21
+.\sync-native.ps1 -CoreDir C:\Dev\libs\hakodb
+.\sync-native.ps1 -Tag v0.18.0
 ```
 
 Binaries under `native/` are git-ignored.
@@ -47,7 +48,7 @@ Binaries under `native/` are git-ignored.
 - `HakoCluster.pas` — cluster surface over `hakocluster.dll`:
   `THakoCluster` (open/put/get/delete/query/promote/epoch/health/tick),
   `THakoDatabases` (multidatabase registry). Native lib via
-  `sync-cluster.ps1 -Tag v0.3.5` (N > 1 needs a unix host).
+  `sync-cluster.ps1 -Tag v0.5.0` (N > 1 needs a unix host).
   - advanced filters (`WhereNotIn`, `ArrayContains`, `ArrayContainsAny`, `WhereOr*`) mapped to FFI
   - callback-based `OnSnapshot` via a polling thread with optional main-thread queue dispatch.
 

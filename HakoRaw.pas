@@ -130,6 +130,10 @@ function hk_engine_insert_take(engine: PHK_Engine; col, doc_id: PChar; doc: PHK_
 { Resolve deferred blob fields of a query-returned doc in place. }
 function hk_doc_resolve_blobs(engine: PHK_Engine; col: PChar; doc: PHK_Doc): cint32; cdecl; external HAKO_LIB;
 function hk_engine_get(engine: PHK_Engine; col, doc_id: PChar): PHK_Doc; cdecl; external HAKO_LIB;
+{ P2 (core 0.18): point-read JSON straight from the pinned bytes; blob
+  links resolved, so bytes match hk_engine_get + hk_doc_to_json. Owned
+  string, free with hk_string_free. Null = missing. }
+function hk_engine_get_json(engine: PHK_Engine; col, doc_id: PChar): PChar; cdecl; external HAKO_LIB;
 function hk_engine_delete(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_delete_local(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_set_collection_local(engine: PHK_Engine; col: PChar; local: cint32): cint32; cdecl; external HAKO_LIB;
@@ -199,6 +203,9 @@ function hk_query_offset(query: PHK_Query; offset: SizeUInt): cint32; cdecl; ext
 function hk_query_select_field(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_defer_blobs(query: PHK_Query; defer: cint32): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
+{ P2 (core 0.18): rows serialized from pinned bytes; byte-identical to
+  hk_query_execute. Owned string. }
+function hk_query_execute_json(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 { Query plan JSON without executing the scan (F7). Owned string. }
 function hk_query_explain(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 function hk_query_delete(engine: PHK_Engine; query: PHK_Query): cint32; cdecl; external HAKO_LIB;
@@ -221,6 +228,15 @@ function hk_view_get_float(view: PHK_ViewDoc; key: PChar; out_value: PDouble): c
 function hk_view_get_bool(view: PHK_ViewDoc; key: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_view_get_str(view: PHK_ViewDoc; key: PChar; len_out: PSizeUInt): PChar; cdecl; external HAKO_LIB;
 function hk_view_get_bytes(view: PHK_ViewDoc; key: PChar; len_out: PSizeUInt): PByte; cdecl; external HAKO_LIB;
+{ P2 (core 0.18): full JSON from the pinned view, no owned decode. Blob
+  links stay as __blob__ links: a view never inflates. Owned string. }
+function hk_view_to_json(view: PHK_ViewDoc): PChar; cdecl; external HAKO_LIB;
+{ P2 (core 0.18): dotted-path pulls ("a.b.c"; one segment = top-level). }
+function hk_view_get_path_int(view: PHK_ViewDoc; path: PChar; out_value: PInt64): cbool; cdecl; external HAKO_LIB;
+function hk_view_get_path_float(view: PHK_ViewDoc; path: PChar; out_value: PDouble): cbool; cdecl; external HAKO_LIB;
+function hk_view_get_path_bool(view: PHK_ViewDoc; path: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_view_get_path_str(view: PHK_ViewDoc; path: PChar; len_out: PSizeUInt): PChar; cdecl; external HAKO_LIB;
+function hk_view_get_path_bytes(view: PHK_ViewDoc; path: PChar; len_out: PSizeUInt): PByte; cdecl; external HAKO_LIB;
 function hk_view_to_doc(view: PHK_ViewDoc; doc_id: PChar): PHK_Doc; cdecl; external HAKO_LIB;
 { View-walk callback: borrowed id + view handle, valid for the call only. }
 { Lazy view walk (v0.8.11+): one call per scan. Returns rows visited, -1 on error. }
@@ -237,6 +253,9 @@ function hk_query_start_after_raw(query: PHK_Query; anchor: PHK_RawDoc): cint32;
 function hk_rawdoc_to_doc(engine: PHK_Engine; raw_doc: PHK_RawDoc; collection: PChar): PHK_Doc; cdecl; external HAKO_LIB;
 { Zero-alloc walk (v0.8.6): one call per scan. Returns rows visited, -1 on error. }
 function hk_cursor_walk(engine: PHK_Engine; query: PHK_Query; callback: THK_WalkCallback; user_data: Pointer): Int64; cdecl; external HAKO_LIB;
+{ P2 (core 0.18): same callback shape, but the bytes are UTF-8 JSON rows.
+  Rows are materialized: not the zero-alloc walk. }
+function hk_cursor_walk_json(engine: PHK_Engine; query: PHK_Query; callback: THK_WalkCallback; user_data: Pointer): Int64; cdecl; external HAKO_LIB;
 function hk_query_where_match(query: PHK_Query; field, value: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_where_match_prefix(query: PHK_Query; field, value: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_where_contains(query: PHK_Query; field, value: PChar): cint32; cdecl; external HAKO_LIB;
