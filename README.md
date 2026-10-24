@@ -23,6 +23,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 | 0.1.9 | `hakocluster v0.4.0` (native DLL refresh: N+1 sync tailer mesh/cloud) |
 | 0.1.10 | `hakodb v0.16.5` (schemas, versioned reads, quiescence, explain, elemMatch/allEq/near/traverse, full C-ABI parity) |
 | 0.1.11 | `hakodb v0.18.0` (P2: `THako.GetJSON`, `THKQuery.GetJSON` fast path + `WalkJSON`, view dotted-path pulls, `THKViewDoc.ToJSON`) |
+| 0.1.12 | `hakodb v0.19.0` (`THKQuery.Min` / `Max`; `False` when no numeric value) |
 
 ## Setup — native library
 
@@ -31,7 +32,7 @@ on `PATH`, or under `./native/` (populated by the sync script):
 
 ```powershell
 .\sync-native.ps1 -CoreDir C:\Dev\libs\hakodb
-.\sync-native.ps1 -Tag v0.18.0
+.\sync-native.ps1 -Tag v0.19.0
 ```
 
 Binaries under `native/` are git-ignored.

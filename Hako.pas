@@ -276,6 +276,10 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function Count: Int64;
     function Sum(const Field: string): Double;
     function Avg(const Field: string): Double;
+    { False when no matching document has a numeric Field. }
+    function Min(const Field: string; out Value: Double): Boolean;
+    { False when no matching document has a numeric Field. }
+    function Max(const Field: string; out Value: Double): Boolean;
 
     function GetJSON: string;
     { Raw execution (v0.8.3+): pinned bytes per row. Free the result. }
@@ -974,6 +978,28 @@ var Q: PHK_Query; J: TJSONObject; begin
   Q := BuildNativeQuery; try hk_query_aggregate_avg(Q, PChar(Field));
   J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
   Result := J.Get('avg_'+Field, 0.0); J.Free; finally hk_query_free(Q); end;
+end;
+
+function THKQuery.Min(const Field: string; out Value: Double): Boolean;
+var Q: PHK_Query; J: TJSONObject; D: TJSONData; begin
+  Value := 0; Result := False;
+  Q := BuildNativeQuery; try hk_query_aggregate_min(Q, PChar(Field));
+  J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
+  try D := J.Find('min_'+Field);
+    if D <> nil then begin Value := D.AsFloat; Result := True; end;
+  finally J.Free; end;
+  finally hk_query_free(Q); end;
+end;
+
+function THKQuery.Max(const Field: string; out Value: Double): Boolean;
+var Q: PHK_Query; J: TJSONObject; D: TJSONData; begin
+  Value := 0; Result := False;
+  Q := BuildNativeQuery; try hk_query_aggregate_max(Q, PChar(Field));
+  J := TJSONObject(TJSONParser.Create(ConsumeCString(hk_query_execute_aggregation(FDB.Handle, Q))).Parse);
+  try D := J.Find('max_'+Field);
+    if D <> nil then begin Value := D.AsFloat; Result := True; end;
+  finally J.Free; end;
+  finally hk_query_free(Q); end;
 end;
 
 function THKQuery.GetJSON: string;
