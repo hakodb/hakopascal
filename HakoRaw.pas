@@ -269,6 +269,8 @@ function hk_query_end_before(query: PHK_Query; anchor: PHK_Doc): cint32; cdecl; 
 function hk_query_aggregate_count(query: PHK_Query): cint32; cdecl; external HAKO_LIB;
 function hk_query_aggregate_sum(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_aggregate_avg(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_query_aggregate_min(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_query_aggregate_max(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute_aggregation(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 
 { Aggregation Pipeline (F4) }
