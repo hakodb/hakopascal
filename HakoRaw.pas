@@ -311,6 +311,24 @@ function hk_engine_find_paths(engine: PHK_Engine; col, doc_id: PChar; direction:
 function hk_engine_create_edge_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_shortest_paths(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via, weight: PChar; max_depth, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
 
+{ v0.19.6 parity: index drops, HNSW tuning, full graph/traverse API,
+  JSON writes. Null JSON returns = hard error (read hk_last_error);
+  drop/create return 0 on success. Predicate pairs (field + JSON
+  equality value) must be both set or both nil. }
+function hk_engine_drop_simple_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_drop_vector_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_drop_composite_index(engine: PHK_Engine; col: PChar; id: cuint32): cint32; cdecl; external HAKO_LIB;
+function hk_engine_drop_edge_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_drop_fts_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_drop_traverse_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_create_vector_index_v2(engine: PHK_Engine; col, field: PChar; dim, metric: cuint32; m, ef_construction, ef_search: SizeUInt): cint32; cdecl; external HAKO_LIB;
+function hk_engine_find_paths_v4(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via: PChar; max_depth, k: SizeUInt; include_path, include_via: cuint32; filter_field, filter_json, type_field, type_json, match_field, match_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_find_simple_paths_v3(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via, weight: PChar; max_depth, k: SizeUInt; include_path, include_via: cuint32; filter_field, filter_json, type_field, type_json, match_field, match_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_export_graph(engine: PHK_Engine; col: PChar; direction: cuint32; edge, via, filter_field, filter_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_graph_analysis(engine: PHK_Engine; col, op: PChar; direction: cuint32; edge, via, filter_field, filter_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_insert_json(engine: PHK_Engine; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_batch_set_json(batch: PHK_Batch; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
+
 { Net Sync }
 function hk_net_syncer_new(engine: PHK_Engine; name, room_key: PChar): PHK_NetSyncer; cdecl; external HAKO_LIB;
 function hk_net_syncer_start(syncer: PHK_NetSyncer; port: Word): cint32; cdecl; external HAKO_LIB;
