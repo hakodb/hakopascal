@@ -327,7 +327,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
 
     procedure CreateIndex(const Field: string);
     procedure CreateFTSIndex(const Field: string);
-    procedure CreateCompositeIndex(const Fields: array of string);
+    function CreateCompositeIndex(const Fields: array of string): LongWord;
     procedure CreateVectorIndex(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE);
     function FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
     procedure CreateTraverseIndex;
@@ -419,7 +419,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure SnapshotIndices;
     function InsertSubDoc(const Col, ID, SubCol, SubID: string; Doc: THKDocument): Integer;
     function GetByRef(Doc: THKDocument; const FieldKey: string): THKDocument;
-    procedure CreateCompositeIndex(const ACollection: string; const Fields: array of string);
+    function CreateCompositeIndex(const ACollection: string; const Fields: array of string): LongWord;
     function StartBatch: THKBatch;
     function StartTransaction: THKTransaction;
     procedure SetCollectionLocal(const ACollection: string; Local: Boolean);
@@ -1629,7 +1629,7 @@ begin
   Result := ConsumeCString(P);
 end;
 
-procedure THKCollection.CreateCompositeIndex(const Fields: array of string);
+function THKCollection.CreateCompositeIndex(const Fields: array of string): LongWord;
 var I: Integer; S: string;
 begin
   S := '[';
@@ -1638,7 +1638,9 @@ begin
     S := S + '{"field":"' + Fields[I] + '","desc":false}';
   end;
   S := S + ']';
-  CheckStatus(hk_engine_create_index(FDB.Handle, PChar(FName), PChar(S)), 'CreateCompositeIndex');
+  { create_index returns the new id, 0 on failure (id contract, like the JS/Go bindings). }
+  Result := hk_engine_create_index(FDB.Handle, PChar(FName), PChar(S));
+  if Result = 0 then raise EHakoError.Create('CreateCompositeIndex failed: ' + string(hk_last_error));
 end;
 
 function THKCollection.ListIndexes: string;
@@ -1703,7 +1705,7 @@ begin
   if H = nil then Exit(nil);
   Result := THKDocument.CreateFromHandle(H, True);
 end;
-procedure THako.CreateCompositeIndex(const ACollection: string; const Fields: array of string);
+function THako.CreateCompositeIndex(const ACollection: string; const Fields: array of string): LongWord;
 var I: Integer; S: string;
 begin
   S := '[';
@@ -1712,7 +1714,9 @@ begin
     S := S + '{"field":"' + Fields[I] + '","desc":false}';
   end;
   S := S + ']';
-  CheckStatus(hk_engine_create_index(FHandle, PChar(ACollection), PChar(S)), 'CreateCompositeIndex');
+  { create_index returns the new id, 0 on failure (id contract, like the JS/Go bindings). }
+  Result := hk_engine_create_index(FHandle, PChar(ACollection), PChar(S));
+  if Result = 0 then raise EHakoError.Create('CreateCompositeIndex failed: ' + string(hk_last_error));
 end;
 function THako.ListCollections: TStringList; var S: string; P: TJSONParser; A: TJSONArray; I: Integer; begin Result := TStringList.Create; S := ConsumeCString(hk_engine_list_collections(FHandle)); if S = '' then Exit; P := TJSONParser.Create(S); try A := TJSONArray(P.Parse); for I := 0 to A.Count - 1 do Result.Add(A.Strings[I]); finally P.Free; end; end;
 function THako.GetStats: string; begin Result := ConsumeCString(hk_engine_get_stats(FHandle)); end;
