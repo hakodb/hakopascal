@@ -136,6 +136,17 @@ function hk_engine_get(engine: PHK_Engine; col, doc_id: PChar): PHK_Doc; cdecl; 
 function hk_engine_get_json(engine: PHK_Engine; col, doc_id: PChar): PChar; cdecl; external HAKO_LIB;
 function hk_engine_delete(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_delete_local(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
+{ Soft delete / sweeper / restore (core 0.20.0): hk_engine_delete is soft
+  since 0.20.0; delete_ext picks explicitly (0 = soft, nonzero = force). }
+function hk_engine_delete_ext(engine: PHK_Engine; col, doc_id: PChar; mode: cint32): cint32; cdecl; external HAKO_LIB;
+function hk_engine_restore(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
+{ Restoreable soft-delete records as a JSON array (empty col = every
+  collection). Free with hk_string_free. Null = hard error. }
+function hk_engine_restore_available(engine: PHK_Engine; col: PChar): PChar; cdecl; external HAKO_LIB;
+{ Due-for-sweep subset of the retention queue, same JSON shape. }
+function hk_engine_delete_queue(engine: PHK_Engine; col: PChar): PChar; cdecl; external HAKO_LIB;
+{ Run one retention sweep pass now; returns the purged count (-1 = error). }
+function hk_engine_sweep_now(engine: PHK_Engine): cint32; cdecl; external HAKO_LIB;
 function hk_engine_set_collection_local(engine: PHK_Engine; col: PChar; local: cint32): cint32; cdecl; external HAKO_LIB;
 function hk_engine_replicate_key(engine: PHK_Engine; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_replicate_collection(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
@@ -157,6 +168,9 @@ function hk_batch_new: PHK_Batch; cdecl; external HAKO_LIB;
 procedure hk_batch_free(batch: PHK_Batch); cdecl; external HAKO_LIB;
 function hk_batch_set(batch: PHK_Batch; col, doc_id: PChar; doc: PHK_Doc): cint32; cdecl; external HAKO_LIB;
 function hk_batch_delete(batch: PHK_Batch; col, doc_id: PChar): cint32; cdecl; external HAKO_LIB;
+{ Batch delete_ext: 0 = soft (restoreable via restore), nonzero = force
+  (legacy tombstone-only). hk_batch_delete stays legacy/force. }
+function hk_batch_delete_ext(batch: PHK_Batch; col, doc_id: PChar; mode: cint32): cint32; cdecl; external HAKO_LIB;
 function hk_batch_commit(engine: PHK_Engine; batch: PHK_Batch): cint32; cdecl; external HAKO_LIB;
 
 { Serializable Transactions }

@@ -115,6 +115,9 @@ type
     destructor Destroy; override;
     function SetDoc(const Col, ID: string; Doc: THKDocument): THKBatch;
     function Delete(const Col, ID: string): THKBatch;
+    { Soft delete / sweeper / restore (core 0.20.0): 0/soft is restoreable
+      via restore; force is the legacy tombstone-only shape. }
+    function DeleteEx(const Col, ID: string; Force: Boolean): THKBatch;
     function SetJSON(const Col, ID, JSON: string): THKBatch;
     procedure Commit;
   end;
@@ -308,6 +311,11 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function Get: THKDocument;
     procedure Delete;
     procedure DeleteLocal;
+    { Soft delete / sweeper / restore (core 0.20.0): default Delete is soft
+      (restoreable via Restore until the sweeper purges the record);
+      DeleteEx picks explicitly, force = legacy tombstone-only. }
+    procedure DeleteEx(Force: Boolean);
+    procedure Restore;
   end;
 
   THKCollection = class
@@ -426,6 +434,18 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure ReplicateKey(const ACollection, ADocID: string);
     procedure ReplicateCollection(const ACollection: string);
     function VacuumCollection(const ACollection: string): Integer;
+    { Soft delete / sweeper / restore (core 0.20.0): default doc-ref Delete
+      is soft (tombstone + retention record, restoreable via Restore);
+      DeleteEx picks explicitly, force = legacy tombstone-only.
+      RestoreAvailable/DeleteQueue return the retention queue as JSON
+      ([{"col","id","deleted_at","scheduled_at","bytes"}]; empty
+      collection = every collection). SweepNow runs one sweep pass and
+      returns the purged record count. }
+    procedure DeleteEx(const ACollection, ADocID: string; Force: Boolean);
+    procedure Restore(const ACollection, ADocID: string);
+    function RestoreAvailable(const ACollection: string = ''): string;
+    function DeleteQueue(const ACollection: string = ''): string;
+    function SweepNow: Integer;
     { Archive (v0.12.3+): move Ids Src -> Dst. Returns the raw JSON
       report {"moved":[...],"missing":[...]}; refusals raise. }
     function RelocateDocs(const Src, Dst: string; const Ids: array of string): string;
@@ -702,6 +722,9 @@ begin CheckStatus(hk_batch_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'Bat
 
 function THKBatch.Delete(const Col, ID: string): THKBatch;
 begin CheckStatus(hk_batch_delete(FHandle, PChar(Col), PChar(ID)), 'BatchDelete'); Result := Self; end;
+
+function THKBatch.DeleteEx(const Col, ID: string; Force: Boolean): THKBatch;
+begin CheckStatus(hk_batch_delete_ext(FHandle, PChar(Col), PChar(ID), Ord(Force)), 'BatchDeleteEx'); Result := Self; end;
 
 function THKBatch.SetJSON(const Col, ID, JSON: string): THKBatch;
 begin CheckStatus(hk_batch_set_json(FHandle, PChar(Col), PChar(ID), PChar(JSON)), 'BatchSetJSON'); Result := Self; end;
@@ -1404,6 +1427,16 @@ begin
   CheckStatus(hk_engine_delete_local(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefDeleteLocal');
 end;
 
+procedure THKDocumentRef.DeleteEx(Force: Boolean);
+begin
+  CheckStatus(hk_engine_delete_ext(FDB.Handle, PChar(FCollection), PChar(FDocID), Ord(Force)), 'DocRefDeleteEx');
+end;
+
+procedure THKDocumentRef.Restore;
+begin
+  CheckStatus(hk_engine_restore(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefRestore');
+end;
+
 { THKCollection }
 
 constructor THKCollection.Create(ADB: THako; const AName: string); begin inherited Create; FDB := ADB; FName := AName; end;
@@ -1767,6 +1800,42 @@ begin Result := hk_engine_await_quiescent(FHandle, TimeoutMs); end;
 
 function THako.QuiescenceStatus: string;
 begin Result := ConsumeCString(hk_engine_quiescence_status(FHandle)); end;
+
+procedure THako.DeleteEx(const ACollection, ADocID: string; Force: Boolean);
+begin
+  CheckStatus(hk_engine_delete_ext(FHandle, PChar(ACollection), PChar(ADocID), Ord(Force)), 'DeleteEx');
+end;
+
+procedure THako.Restore(const ACollection, ADocID: string);
+begin
+  CheckStatus(hk_engine_restore(FHandle, PChar(ACollection), PChar(ADocID)), 'Restore');
+end;
+
+function THako.RestoreAvailable(const ACollection: string): string;
+begin
+  if ACollection = '' then
+    Result := ConsumeCString(hk_engine_restore_available(FHandle, nil))
+  else
+    Result := ConsumeCString(hk_engine_restore_available(FHandle, PChar(ACollection)));
+  if Result = '' then CheckStatus(-1, 'RestoreAvailable');
+end;
+
+function THako.DeleteQueue(const ACollection: string): string;
+begin
+  if ACollection = '' then
+    Result := ConsumeCString(hk_engine_delete_queue(FHandle, nil))
+  else
+    Result := ConsumeCString(hk_engine_delete_queue(FHandle, PChar(ACollection)));
+  if Result = '' then CheckStatus(-1, 'DeleteQueue');
+end;
+
+function THako.SweepNow: Integer;
+var N: cint32;
+begin
+  N := hk_engine_sweep_now(FHandle);
+  if N < 0 then CheckStatus(-1, 'SweepNow');
+  Result := N;
+end;
 
 function THako.DebugWriteStats: string;
 begin Result := ConsumeCString(hk_debug_write_stats); end;
