@@ -115,6 +115,7 @@ type
     destructor Destroy; override;
     function SetDoc(const Col, ID: string; Doc: THKDocument): THKBatch;
     function Delete(const Col, ID: string): THKBatch;
+    function SetJSON(const Col, ID, JSON: string): THKBatch;
     procedure Commit;
   end;
 
@@ -334,6 +335,22 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure CreateEdgeIndex;
     function ShortestPaths(const DocID: string; const Via: string; const Weight: string = ''; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
     function ListIndexes: string;
+
+    { v0.19.6 parity: index drops, HNSW tuning, full graph/traverse API,
+      JSON writes. Predicate pairs (Field + JSON equality value) must
+      be both set or both empty. }
+    procedure DropIndex(const Field: string);
+    procedure DropVectorIndex(const Field: string);
+    procedure DropCompositeIndex(ID: LongWord);
+    procedure DropEdgeIndex;
+    procedure DropFTSIndex(const Field: string);
+    procedure DropTraverseIndex;
+    procedure CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE; M: NativeUInt = 0; EFConstruction: NativeUInt = 0; EFSearch: NativeUInt = 0);
+    procedure InsertJSON(const DocID, JSON: string);
+    function FindPathsFull(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100; IncludePath: Boolean = False; IncludeVia: Boolean = False; const NodeField: string = ''; const NodeJSON: string = ''; const TypeField: string = ''; const TypeJSON: string = ''; const MatchField: string = ''; const MatchJSON: string = ''): string;
+    function ShortestPathsFull(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const Weight: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100; IncludePath: Boolean = False; IncludeVia: Boolean = False; const NodeField: string = ''; const NodeJSON: string = ''; const TypeField: string = ''; const TypeJSON: string = ''; const MatchField: string = ''; const MatchJSON: string = ''): string;
+    function ExportGraph(Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
+    function GraphAnalysis(const Op: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
   end;
 
   THKNetSyncer = class
@@ -685,6 +702,9 @@ begin CheckStatus(hk_batch_set(FHandle, PChar(Col), PChar(ID), Doc.Handle), 'Bat
 
 function THKBatch.Delete(const Col, ID: string): THKBatch;
 begin CheckStatus(hk_batch_delete(FHandle, PChar(Col), PChar(ID)), 'BatchDelete'); Result := Self; end;
+
+function THKBatch.SetJSON(const Col, ID, JSON: string): THKBatch;
+begin CheckStatus(hk_batch_set_json(FHandle, PChar(Col), PChar(ID), PChar(JSON)), 'BatchSetJSON'); Result := Self; end;
 
 procedure THKBatch.Commit;
 begin CheckStatus(hk_batch_commit(FDBHandle, FHandle), 'BatchCommit'); FCommitted := True; end;
@@ -1511,6 +1531,101 @@ begin
   P := hk_engine_shortest_paths(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), OptP(Edge), OptP(Via), OptP(Weight), MaxDepth, K);
   { Null is a hard error - ConsumeCString would swallow it as ''. }
   if P = nil then raise EHakoError.Create('ShortestPaths failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+{ v0.19.6 parity }
+procedure THKCollection.DropIndex(const Field: string);
+begin CheckStatus(hk_engine_drop_simple_index(FDB.Handle, PChar(FName), PChar(Field)), 'DropIndex'); end;
+
+procedure THKCollection.DropVectorIndex(const Field: string);
+begin CheckStatus(hk_engine_drop_vector_index(FDB.Handle, PChar(FName), PChar(Field)), 'DropVectorIndex'); end;
+
+procedure THKCollection.DropCompositeIndex(ID: LongWord);
+begin CheckStatus(hk_engine_drop_composite_index(FDB.Handle, PChar(FName), cuint32(ID)), 'DropCompositeIndex'); end;
+
+procedure THKCollection.DropEdgeIndex;
+begin CheckStatus(hk_engine_drop_edge_index(FDB.Handle, PChar(FName)), 'DropEdgeIndex'); end;
+
+procedure THKCollection.DropFTSIndex(const Field: string);
+begin CheckStatus(hk_engine_drop_fts_index(FDB.Handle, PChar(FName), PChar(Field)), 'DropFTSIndex'); end;
+
+procedure THKCollection.DropTraverseIndex;
+begin CheckStatus(hk_engine_drop_traverse_index(FDB.Handle, PChar(FName)), 'DropTraverseIndex'); end;
+
+procedure THKCollection.CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord; M, EFConstruction, EFSearch: NativeUInt);
+begin CheckStatus(hk_engine_create_vector_index_v2(FDB.Handle, PChar(FName), PChar(Field), cuint32(Dim), cuint32(Metric), M, EFConstruction, EFSearch), 'CreateVectorIndexV2'); end;
+
+procedure THKCollection.InsertJSON(const DocID, JSON: string);
+begin CheckStatus(hk_engine_insert_json(FDB.Handle, PChar(FName), PChar(DocID), PChar(JSON)), 'InsertJSON'); end;
+
+function THKCollection.FindPathsFull(const DocID: string; Direction: LongWord; const Edge, Via: string; MaxDepth, K: NativeUInt; IncludePath, IncludeVia: Boolean; const NodeField, NodeJSON, TypeField, TypeJSON, MatchField, MatchJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+  function B32(B: Boolean): cuint32;
+  begin
+    if B then Result := 1 else Result := 0;
+  end;
+
+begin
+  P := hk_engine_find_paths_v4(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), OptP(Edge), OptP(Via), MaxDepth, K, B32(IncludePath), B32(IncludeVia), OptP(NodeField), OptP(NodeJSON), OptP(TypeField), OptP(TypeJSON), OptP(MatchField), OptP(MatchJSON));
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('FindPathsFull failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.ShortestPathsFull(const DocID: string; Direction: LongWord; const Edge, Via, Weight: string; MaxDepth, K: NativeUInt; IncludePath, IncludeVia: Boolean; const NodeField, NodeJSON, TypeField, TypeJSON, MatchField, MatchJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+  function B32(B: Boolean): cuint32;
+  begin
+    if B then Result := 1 else Result := 0;
+  end;
+
+begin
+  P := hk_engine_find_simple_paths_v3(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), OptP(Edge), OptP(Via), OptP(Weight), MaxDepth, K, B32(IncludePath), B32(IncludeVia), OptP(NodeField), OptP(NodeJSON), OptP(TypeField), OptP(TypeJSON), OptP(MatchField), OptP(MatchJSON));
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('ShortestPathsFull failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.ExportGraph(Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  P := hk_engine_export_graph(FDB.Handle, PChar(FName), cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON));
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('ExportGraph failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.GraphAnalysis(const Op: string; Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  P := hk_engine_graph_analysis(FDB.Handle, PChar(FName), PChar(Op), cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON));
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('GraphAnalysis failed: ' + string(hk_last_error));
   Result := ConsumeCString(P);
 end;
 
