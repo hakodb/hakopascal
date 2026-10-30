@@ -9,21 +9,7 @@ plus design-time components: `HakoRaw.pas` (flat `cdecl` FFI over
 
 ## Compatibility
 
-| hakopascal | hako core |
-|---|---|
-| 0.1.1 | `cloud_sync` branch / `v0.8.21`+ release asset |
-| 0.1.2 | `hakodb v0.12.3` (archive: RelocateDocs/Load/Unload/UnloadedCollections) |
-| 0.1.3 | `hakocluster v0.3.5` (new `HakoCluster.pas`: THakoCluster/THakoDatabases) |
-| 0.1.4 | `hakodb v0.13.3` (`CreateVectorIndex` + `FindNear` KNN over `hk_engine_find_near`) |
-| 0.1.5 | `hakodb v0.14.0` (`CreateTraverseIndex` + `FindPaths` graph BFS over `hk_engine_find_paths`) |
-| 0.1.6 | `hakodb v0.15.0` (Phase B: `CreateEdgeIndex` + `ShortestPaths` Dijkstra) |
-| 0.1.7 | `hakodb v0.15.3` (native DLL refresh: ring-only TLS + shared sync framing) |
-| 0.1.7 | `hakodb v0.15.3` (patch: ring-only TLS + shared sync framing, fail-closed 256MB frame cap) |
-| 0.1.8 | `hakodb v0.16.0` (server room params: `hk_cloud_sync_server_new` + `CreateCloudServerSyncer` take RoomName/RoomKey) |
-| 0.1.9 | `hakocluster v0.4.0` (native DLL refresh: N+1 sync tailer mesh/cloud) |
-| 0.1.10 | `hakodb v0.16.5` (schemas, versioned reads, quiescence, explain, elemMatch/allEq/near/traverse, full C-ABI parity) |
-| 0.1.11 | `hakodb v0.18.0` (P2: `THako.GetJSON`, `THKQuery.GetJSON` fast path + `WalkJSON`, view dotted-path pulls, `THKViewDoc.ToJSON`) |
-| 0.1.12 | `hakodb v0.19.0` (`THKQuery.Min` / `Max`; `False` when no numeric value) |
+Works against the corresponding core release; each release pairs with a matching `hakodb` tag (see the releases page for the exact pairing).
 
 ## Setup — native library
 
@@ -31,8 +17,10 @@ The units link `hakodb.dll` by filename: put it next to your binary,
 on `PATH`, or under `./native/` (populated by the sync script):
 
 ```powershell
+# from a local core checkout (build it first: cargo build --release)
 .\sync-native.ps1 -CoreDir C:\Dev\libs\hakodb
-.\sync-native.ps1 -Tag v0.19.0
+# or from a core release (pass the tag you want)
+.\sync-native.ps1 -Tag <core-release-tag>
 ```
 
 Binaries under `native/` are git-ignored.
@@ -49,7 +37,7 @@ Binaries under `native/` are git-ignored.
 - `HakoCluster.pas` — cluster surface over `hakocluster.dll`:
   `THakoCluster` (open/put/get/delete/query/promote/epoch/health/tick),
   `THakoDatabases` (multidatabase registry). Native lib via
-  `sync-cluster.ps1 -Tag v0.5.0` (N > 1 needs a unix host).
+  `sync-cluster.ps1` (N > 1 needs a unix host).
   - advanced filters (`WhereNotIn`, `ArrayContains`, `ArrayContainsAny`, `WhereOr*`) mapped to FFI
   - callback-based `OnSnapshot` via a polling thread with optional main-thread queue dispatch.
 
