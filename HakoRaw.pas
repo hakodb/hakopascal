@@ -335,11 +335,18 @@ function hk_engine_drop_composite_index(engine: PHK_Engine; col: PChar; id: cuin
 function hk_engine_drop_edge_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_drop_fts_index(engine: PHK_Engine; col, field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_drop_traverse_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
-function hk_engine_create_vector_index_v2(engine: PHK_Engine; col, field: PChar; dim, metric: cuint32; m, ef_construction, ef_search: SizeUInt): cint32; cdecl; external HAKO_LIB;
+function hk_engine_create_vector_index_v2(engine: PHK_Engine; col, field: PChar; dim, metric: cuint32; m, ef_construction, ef_search: SizeUInt; binary_stage1: cuint32): cint32; cdecl; external HAKO_LIB;
 function hk_engine_find_paths_v4(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via: PChar; max_depth, k: SizeUInt; include_path, include_via: cuint32; filter_field, filter_json, type_field, type_json, match_field, match_json: PChar): PChar; cdecl; external HAKO_LIB;
 function hk_engine_find_simple_paths_v3(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge, via, weight: PChar; max_depth, k: SizeUInt; include_path, include_via: cuint32; filter_field, filter_json, type_field, type_json, match_field, match_json: PChar): PChar; cdecl; external HAKO_LIB;
 function hk_engine_export_graph(engine: PHK_Engine; col: PChar; direction: cuint32; edge, via, filter_field, filter_json: PChar): PChar; cdecl; external HAKO_LIB;
 function hk_engine_graph_analysis(engine: PHK_Engine; col, op: PChar; direction: cuint32; edge, via, filter_field, filter_json: PChar): PChar; cdecl; external HAKO_LIB;
+{ GraphRAG (core 0.20.5+): hybrid FTS+KNN fused with RRF, personalized
+  PageRank, seed-scoped subgraph. Owned JSON strings - free with
+  hk_string_free. Null = hard error (read hk_last_error). rrf_k 0 =
+  default 60, damping 0 = default 0.85, node_cap 0 = unlimited. }
+function hk_engine_hybrid_search(engine: PHK_Engine; col, text_field, text_query, vec_field: PChar; vec: PSingle; vec_len, k, rrf_k: SizeUInt): PChar; cdecl; external HAKO_LIB;
+function hk_engine_graph_pagerank(engine: PHK_Engine; col, seeds_json: PChar; direction: cuint32; edge, via, filter_field, filter_json: PChar; damping: cdouble; top: SizeUInt): PChar; cdecl; external HAKO_LIB;
+function hk_engine_subgraph(engine: PHK_Engine; col, seed_id: PChar; max_depth, direction: cuint32; edge, via, filter_field, filter_json: PChar; node_cap: SizeUInt): PChar; cdecl; external HAKO_LIB;
 function hk_engine_insert_json(engine: PHK_Engine; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_batch_set_json(batch: PHK_Batch; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
 
