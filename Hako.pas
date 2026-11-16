@@ -353,12 +353,20 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure DropEdgeIndex;
     procedure DropFTSIndex(const Field: string);
     procedure DropTraverseIndex;
-    procedure CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE; M: NativeUInt = 0; EFConstruction: NativeUInt = 0; EFSearch: NativeUInt = 0);
+    procedure CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord = HK_VECTOR_COSINE; M: NativeUInt = 0; EFConstruction: NativeUInt = 0; EFSearch: NativeUInt = 0; BinaryStage1: Boolean = False);
     procedure InsertJSON(const DocID, JSON: string);
     function FindPathsFull(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100; IncludePath: Boolean = False; IncludeVia: Boolean = False; const NodeField: string = ''; const NodeJSON: string = ''; const TypeField: string = ''; const TypeJSON: string = ''; const MatchField: string = ''; const MatchJSON: string = ''): string;
     function ShortestPathsFull(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const Weight: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100; IncludePath: Boolean = False; IncludeVia: Boolean = False; const NodeField: string = ''; const NodeJSON: string = ''; const TypeField: string = ''; const TypeJSON: string = ''; const MatchField: string = ''; const MatchJSON: string = ''): string;
     function ExportGraph(Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
     function GraphAnalysis(const Op: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
+    { GraphRAG (core 0.20.5+): hybrid FTS+KNN fused with RRF (rows
+      id/score/doc), personalized PageRank (rows node/score; seeds
+      "col/id", empty = classic), seed-scoped subgraph (nodes+edges).
+      Damping 0 = engine default 0.85; RrfK 0 = default 60;
+      NodeCap 0 = unlimited. }
+    function HybridSearch(const TextField, TextQuery, VecField: string; const Vec: array of Single; K: NativeUInt = 10; RrfK: NativeUInt = 0): string;
+    function GraphPagerank(const Seeds: array of string; Damping: Double = 0; Top: NativeUInt = 0; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
+    function Subgraph(const SeedID: string; MaxDepth: NativeUInt = 10; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''; NodeCap: NativeUInt = 0): string;
   end;
 
   THKNetSyncer = class
@@ -1586,8 +1594,13 @@ begin CheckStatus(hk_engine_drop_fts_index(FDB.Handle, PChar(FName), PChar(Field
 procedure THKCollection.DropTraverseIndex;
 begin CheckStatus(hk_engine_drop_traverse_index(FDB.Handle, PChar(FName)), 'DropTraverseIndex'); end;
 
-procedure THKCollection.CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord; M, EFConstruction, EFSearch: NativeUInt);
-begin CheckStatus(hk_engine_create_vector_index_v2(FDB.Handle, PChar(FName), PChar(Field), cuint32(Dim), cuint32(Metric), M, EFConstruction, EFSearch), 'CreateVectorIndexV2'); end;
+procedure THKCollection.CreateVectorIndexV2(const Field: string; Dim: LongWord; Metric: LongWord; M, EFConstruction, EFSearch: NativeUInt; BinaryStage1: Boolean);
+begin
+  if BinaryStage1 then
+    CheckStatus(hk_engine_create_vector_index_v2(FDB.Handle, PChar(FName), PChar(Field), cuint32(Dim), cuint32(Metric), M, EFConstruction, EFSearch, 1), 'CreateVectorIndexV2')
+  else
+    CheckStatus(hk_engine_create_vector_index_v2(FDB.Handle, PChar(FName), PChar(Field), cuint32(Dim), cuint32(Metric), M, EFConstruction, EFSearch, 0), 'CreateVectorIndexV2');
+end;
 
 procedure THKCollection.InsertJSON(const DocID, JSON: string);
 begin CheckStatus(hk_engine_insert_json(FDB.Handle, PChar(FName), PChar(DocID), PChar(JSON)), 'InsertJSON'); end;
@@ -1659,6 +1672,53 @@ begin
   P := hk_engine_graph_analysis(FDB.Handle, PChar(FName), PChar(Op), cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON));
   { Null is a hard error - ConsumeCString would swallow it as ''. }
   if P = nil then raise EHakoError.Create('GraphAnalysis failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.HybridSearch(const TextField, TextQuery, VecField: string; const Vec: array of Single; K: NativeUInt; RrfK: NativeUInt): string;
+var P: PChar;
+begin
+  if Length(Vec) = 0 then raise EHakoError.Create('HybridSearch requires a non-empty query vector');
+  P := hk_engine_hybrid_search(FDB.Handle, PChar(FName), PChar(TextField), PChar(TextQuery), PChar(VecField), @Vec[0], SizeUInt(Length(Vec)), K, RrfK);
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('HybridSearch failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.GraphPagerank(const Seeds: array of string; Damping: Double; Top: NativeUInt; Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string): string;
+var P, PS: PChar; I: Integer; SJ: string;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  { seeds_json = ["col/id",...]; nil = classic PageRank. }
+  SJ := '';
+  for I := Low(Seeds) to High(Seeds) do begin
+    if I > Low(Seeds) then SJ := SJ + ',';
+    SJ := SJ + '"' + Seeds[I] + '"';
+  end;
+  if SJ = '' then PS := nil else PS := PChar('[' + SJ + ']');
+  P := hk_engine_graph_pagerank(FDB.Handle, PChar(FName), PS, cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON), Damping, Top);
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('GraphPagerank failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.Subgraph(const SeedID: string; MaxDepth: NativeUInt; Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string; NodeCap: NativeUInt): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  P := hk_engine_subgraph(FDB.Handle, PChar(FName), PChar(SeedID), cuint32(MaxDepth), cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON), NodeCap);
+  { Null is a hard error - ConsumeCString would swallow it as ''. }
+  if P = nil then raise EHakoError.Create('Subgraph failed: ' + string(hk_last_error));
   Result := ConsumeCString(P);
 end;
 
