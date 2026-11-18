@@ -350,6 +350,18 @@ function hk_engine_subgraph(engine: PHK_Engine; col, seed_id: PChar; max_depth, 
 function hk_engine_insert_json(engine: PHK_Engine; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_batch_set_json(batch: PHK_Batch; col, doc_id, json: PChar): cint32; cdecl; external HAKO_LIB;
 
+{ v0.21.0 parity (#217 wave): exclusive open, idempotent boot schema,
+  filtered hybrid/KNN, subgraph projection. Owned JSON strings - free
+  with hk_string_free. Null = hard error (read hk_last_error). For the
+  filtered calls, nil filters_json = no filters; for the projected
+  subgraph, nil/empty fields_json = legacy full output; max_distance
+  NaN or <= 0 = no cap; metric 0=cosine 1=l2 2=inner_product. }
+function hk_engine_open_exclusive(path: PChar): PHK_Engine; cdecl; external HAKO_LIB;
+function hk_engine_ensure_indexes(engine: PHK_Engine; schema_json: PChar): cint32; cdecl; external HAKO_LIB;
+function hk_engine_hybrid_search_filtered(engine: PHK_Engine; col, text_field, text_query, vec_field: PChar; vec: PSingle; vec_len, k, rrf_k: SizeUInt; filters_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_find_near_scored_filtered(engine: PHK_Engine; col, field: PChar; vec: PSingle; vec_len, k: SizeUInt; max_distance: cdouble; filters_json: PChar): PChar; cdecl; external HAKO_LIB;
+function hk_engine_subgraph_json_projected(engine: PHK_Engine; col, seed_id: PChar; max_depth, direction: cuint32; edge, via, filter_field, filter_json: PChar; node_cap: SizeUInt; fields_json: PChar): PChar; cdecl; external HAKO_LIB;
+
 { Net Sync }
 function hk_net_syncer_new(engine: PHK_Engine; name, room_key: PChar): PHK_NetSyncer; cdecl; external HAKO_LIB;
 function hk_net_syncer_start(syncer: PHK_NetSyncer; port: Word): cint32; cdecl; external HAKO_LIB;
