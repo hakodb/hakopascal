@@ -367,6 +367,14 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function HybridSearch(const TextField, TextQuery, VecField: string; const Vec: array of Single; K: NativeUInt = 10; RrfK: NativeUInt = 0): string;
     function GraphPagerank(const Seeds: array of string; Damping: Double = 0; Top: NativeUInt = 0; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''): string;
     function Subgraph(const SeedID: string; MaxDepth: NativeUInt = 10; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; const Via: string = ''; const NodeField: string = ''; const NodeJSON: string = ''; NodeCap: NativeUInt = 0): string;
+    { v0.21.0 parity (#217 wave): filtered hybrid/KNN + subgraph
+      projection. FiltersJSON = '[{"field","op","value"}...]' with
+      lowercase ops (contains, eq, ...); '' = no filters. FieldsJSON =
+      '["name",...]' keep-list; '' = legacy full output. MaxDistance
+      NaN or <= 0 = no cap. }
+    function HybridSearchFiltered(const TextField, TextQuery, VecField: string; const Vec: array of Single; K: NativeUInt; RrfK: NativeUInt; const FiltersJSON: string): string;
+    function FindNearScoredFiltered(const VecField: string; const Vec: array of Single; K: NativeUInt; MaxDistance: Double; const FiltersJSON: string): string;
+    function SubgraphProjected(const SeedID: string; MaxDepth: NativeUInt; Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string; NodeCap: NativeUInt; const FieldsJSON: string): string;
   end;
 
   THKNetSyncer = class
@@ -399,6 +407,16 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
   public
     constructor Create(const DBPath: string); overload;
     constructor Create(const DBPath: string; AConfig: THKConfig); overload;
+    { v0.21.0 parity (#217 wave): exclusive open — refuses (raises with
+      last_error naming the conflict) when the data dir is already held
+      by another HakoDB instance (cross-process AND cross-handle
+      in-process). The lock releases when this THako frees. }
+    constructor CreateExclusive(const DBPath: string); overload;
+    { One idempotent boot-time index declaration. SchemaJSON =
+      {"fts":[[col,field]...],"vector":[[col,field,dim,metric]...],
+      "tracked":[col...]}; metric 0=cosine 1=l2 2=inner_product; any
+      key optional. Re-declaring an existing schema is a cheap no-op. }
+    procedure EnsureIndexes(const SchemaJSON: string);
     destructor Destroy; override;
     function Collection(const Name: string): THKCollection;
     function ListCollections: TStringList;
@@ -1722,6 +1740,50 @@ begin
   Result := ConsumeCString(P);
 end;
 
+function THKCollection.HybridSearchFiltered(const TextField, TextQuery, VecField: string; const Vec: array of Single; K: NativeUInt; RrfK: NativeUInt; const FiltersJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  if Length(Vec) = 0 then raise EHakoError.Create('HybridSearchFiltered requires a non-empty query vector');
+  P := hk_engine_hybrid_search_filtered(FDB.Handle, PChar(FName), PChar(TextField), PChar(TextQuery), PChar(VecField), @Vec[0], SizeUInt(Length(Vec)), K, RrfK, OptP(FiltersJSON));
+  if P = nil then raise EHakoError.Create('HybridSearchFiltered failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.FindNearScoredFiltered(const VecField: string; const Vec: array of Single; K: NativeUInt; MaxDistance: Double; const FiltersJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  if Length(Vec) = 0 then raise EHakoError.Create('FindNearScoredFiltered requires a non-empty query vector');
+  P := hk_engine_find_near_scored_filtered(FDB.Handle, PChar(FName), PChar(VecField), @Vec[0], SizeUInt(Length(Vec)), K, MaxDistance, OptP(FiltersJSON));
+  if P = nil then raise EHakoError.Create('FindNearScoredFiltered failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
+function THKCollection.SubgraphProjected(const SeedID: string; MaxDepth: NativeUInt; Direction: LongWord; const Edge, Via, NodeField, NodeJSON: string; NodeCap: NativeUInt; const FieldsJSON: string): string;
+var P: PChar;
+
+  function OptP(const S: string): PChar;
+  begin
+    if S = '' then Result := nil else Result := PChar(S);
+  end;
+
+begin
+  P := hk_engine_subgraph_json_projected(FDB.Handle, PChar(FName), PChar(SeedID), cuint32(MaxDepth), cuint32(Direction), OptP(Edge), OptP(Via), OptP(NodeField), OptP(NodeJSON), NodeCap, OptP(FieldsJSON));
+  if P = nil then raise EHakoError.Create('SubgraphProjected failed: ' + string(hk_last_error));
+  Result := ConsumeCString(P);
+end;
+
 function THKCollection.CreateCompositeIndex(const Fields: array of string): LongWord;
 var I: Integer; S: string;
 begin
@@ -1741,8 +1803,22 @@ begin Result := ConsumeCString(hk_engine_list_indexes(FDB.Handle, PChar(FName)))
 
 { THako }
 
-constructor THako.Create(const DBPath: string); begin inherited Create; FHandle := hk_engine_open(PChar(DBPath)); end;
-constructor THako.Create(const DBPath: string; AConfig: THKConfig); begin inherited Create; FHandle := hk_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; end;
+constructor THako.Create(const DBPath: string); begin inherited Create; FHandle := hk_engine_open(PChar(DBPath)); if FHandle = nil then raise EHakoError.Create('Hako open failed: ' + string(hk_last_error)); end;
+constructor THako.Create(const DBPath: string; AConfig: THKConfig); begin inherited Create; FHandle := hk_engine_open_with_config(PChar(DBPath), AConfig.Handle); AConfig.FHandle := nil; if FHandle = nil then raise EHakoError.Create('Hako open failed: ' + string(hk_last_error)); end;
+constructor THako.CreateExclusive(const DBPath: string);
+begin
+  inherited Create;
+  FHandle := hk_engine_open_exclusive(PChar(DBPath));
+  if FHandle = nil then
+    raise EHakoError.Create('Hako open_exclusive failed: ' + string(hk_last_error));
+end;
+
+procedure THako.EnsureIndexes(const SchemaJSON: string);
+begin
+  if hk_engine_ensure_indexes(FHandle, PChar(SchemaJSON)) <> 0 then
+    raise EHakoError.Create('EnsureIndexes failed: ' + string(hk_last_error));
+end;
+
 destructor THako.Destroy; begin if FHandle <> nil then hk_engine_free(FHandle); inherited; end;
 function THako.Collection(const Name: string): THKCollection; begin Result := THKCollection.Create(Self, Name); end;
 function THako.StartBatch: THKBatch; begin Result := THKBatch.Create(FHandle); end;
