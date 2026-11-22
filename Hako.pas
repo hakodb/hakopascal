@@ -287,6 +287,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
 
     function GetJSON: string;
     function GetJSONWithCancel(Cancel: Pointer): string;
+    function Reset(const Collection: string): Boolean;
     { Raw execution (v0.8.3+): pinned bytes per row. Free the result. }
     function ExecuteRaw: THKRawResultSet;
     { Zero-alloc walk (v0.8.6+): one call per scan. Returns rows visited. }
@@ -1078,6 +1079,11 @@ end;
 
 function THKQuery.GetJSON: string;
 var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute_json(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
+function THKQuery.Reset(const Collection: string): Boolean;
+begin
+  Result := hk_query_reset(FDB.Handle, PChar(Collection)) = 0;
+end;
+
 function THKQuery.GetJSONWithCancel(Cancel: Pointer): string;
 var Q: PHK_Query;
 begin
