@@ -286,6 +286,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function Max(const Field: string; out Value: Double): Boolean;
 
     function GetJSON: string;
+    function GetJSONWithCancel(Cancel: Pointer): string;
     { Raw execution (v0.8.3+): pinned bytes per row. Free the result. }
     function ExecuteRaw: THKRawResultSet;
     { Zero-alloc walk (v0.8.6+): one call per scan. Returns rows visited. }
@@ -340,6 +341,7 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     function FindNear(const Field: string; const Vec: array of Single; K: NativeUInt = 10): string;
     procedure CreateTraverseIndex;
     function FindPaths(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
+    function FindPathsCount(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): Int64;
     procedure CreateEdgeIndex;
     function ShortestPaths(const DocID: string; const Via: string; const Weight: string = ''; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
     function ListIndexes: string;
@@ -419,6 +421,9 @@ function DeferBlobs(Defer: Boolean = True): THKQuery;
     procedure EnsureIndexes(const SchemaJSON: string);
     destructor Destroy; override;
     function Collection(const Name: string): THKCollection;
+    function NewCancel: Pointer;
+    procedure RequestCancel(Cancel: Pointer);
+    procedure FreeCancel(Cancel: Pointer);
     function ListCollections: TStringList;
     function ListIndexes(const ACollection: string): string;
     function GetStats: string;
@@ -1072,8 +1077,19 @@ var Q: PHK_Query; J: TJSONObject; D: TJSONData; begin
 end;
 
 function THKQuery.GetJSON: string;
-{ P2 (core 0.18): raw fast path — bytes identical to hk_query_execute. }
 var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_execute_json(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
+function THKQuery.GetJSONWithCancel(Cancel: Pointer): string;
+var Q: PHK_Query;
+begin
+  Q := BuildNativeQuery;
+  try
+    Result := ConsumeCString(hk_query_execute_with_cancel(FDB.Handle, Q, Cancel));
+  finally
+    hk_query_free(Q);
+  end;
+end;
+
+{ P2 (core 0.18): raw fast path — bytes identical to hk_query_execute. }
 
 function THKQuery.Explain: string;
 var Q: PHK_Query; begin Q := BuildNativeQuery; try Result := ConsumeCString(hk_query_explain(FDB.Handle, Q)); finally hk_query_free(Q); end; end;
@@ -1463,6 +1479,21 @@ begin
   CheckStatus(hk_engine_restore(FDB.Handle, PChar(FCollection), PChar(FDocID)), 'DocRefRestore');
 end;
 
+function THako.NewCancel: Pointer;
+begin
+  Result := hk_cancel_new();
+end;
+
+procedure THako.RequestCancel(Cancel: Pointer);
+begin
+  hk_cancel(Cancel);
+end;
+
+procedure THako.FreeCancel(Cancel: Pointer);
+begin
+  hk_cancel_free(Cancel);
+end;
+
 { THKCollection }
 
 constructor THKCollection.Create(ADB: THako; const AName: string); begin inherited Create; FDB := ADB; FName := AName; end;
@@ -1566,6 +1597,13 @@ end;
 
 procedure THKCollection.CreateTraverseIndex;
 begin CheckStatus(hk_engine_create_traverse_index(FDB.Handle, PChar(FName)), 'CreateTraverseIndex'); end;
+function THKCollection.FindPathsCount(const DocID: string; Direction: LongWord; const Edge: string; MaxDepth: NativeUInt; K: NativeUInt): Int64;
+var E: PChar;
+begin
+  if Edge = '' then E := nil else E := PChar(Edge);
+  Result := hk_engine_find_paths_count(FDB.Handle, PChar(FName), PChar(DocID), cuint32(Direction), E, MaxDepth, K);
+end;
+
 function THKCollection.FindPaths(const DocID: string; Direction: LongWord = HK_TRAVERSE_OUT; const Edge: string = ''; MaxDepth: NativeUInt = 10; K: NativeUInt = 100): string;
 var P: PChar; E: PChar;
 begin
