@@ -217,6 +217,10 @@ function hk_query_offset(query: PHK_Query; offset: SizeUInt): cint32; cdecl; ext
 function hk_query_select_field(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_defer_blobs(query: PHK_Query; defer: cint32): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
+function hk_query_execute_with_cancel(engine: PHK_Engine; query: PHK_Query; cancel: Pointer): PChar; cdecl; external HAKO_LIB;
+function hk_cancel_new: Pointer; cdecl; external HAKO_LIB;
+procedure hk_cancel(cancel: Pointer); cdecl; external HAKO_LIB;
+procedure hk_cancel_free(cancel: Pointer); cdecl; external HAKO_LIB;
 { P2 (core 0.18): rows serialized from pinned bytes; byte-identical to
   hk_query_execute. Owned string. }
 function hk_query_execute_json(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
@@ -319,6 +323,7 @@ function hk_engine_find_near(engine: PHK_Engine; col, field: PChar; vec: PSingle
   empty array. }
 function hk_engine_create_traverse_index(engine: PHK_Engine; col: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_engine_find_paths(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge: PChar; max_depth, k: SizeUInt): PChar; cdecl; external HAKO_LIB;
+function hk_engine_find_paths_count(engine: PHK_Engine; col, doc_id: PChar; direction: cuint32; edge: PChar; max_depth, k: SizeUInt): Int64; cdecl; external HAKO_LIB;
 { Phase B edge collections (core 0.15.0+): register (tracks + indexes
   _from/_to) and weighted Dijkstra. Same JSON shapes (hits carry cost).
   Additive fns: find_paths stays frozen. }
