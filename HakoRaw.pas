@@ -216,6 +216,9 @@ function hk_query_limit(query: PHK_Query; limit: SizeUInt): cint32; cdecl; exter
 function hk_query_offset(query: PHK_Query; offset: SizeUInt): cint32; cdecl; external HAKO_LIB;
 function hk_query_select_field(query: PHK_Query; field: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_defer_blobs(query: PHK_Query; defer: cint32): cint32; cdecl; external HAKO_LIB;
+{ Canonical executor; pass nil for no cancellation. }
+function hk_query_execute_ex(engine: PHK_Engine; query: PHK_Query; cancel: Pointer): PChar; cdecl; external HAKO_LIB;
+{ Legacy wrappers, retained for compatibility (deprecated). }
 function hk_query_execute(engine: PHK_Engine; query: PHK_Query): PChar; cdecl; external HAKO_LIB;
 function hk_query_reset(query: PHK_Query; collection: PChar): cint32; cdecl; external HAKO_LIB;
 function hk_query_execute_with_cancel(engine: PHK_Engine; query: PHK_Query; cancel: Pointer): PChar; cdecl; external HAKO_LIB;
