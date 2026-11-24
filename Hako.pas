@@ -1089,7 +1089,7 @@ var Q: PHK_Query;
 begin
   Q := BuildNativeQuery;
   try
-    Result := ConsumeCString(hk_query_execute_with_cancel(FDB.Handle, Q, Cancel));
+    Result := ConsumeCString(hk_query_execute_ex(FDB.Handle, Q, Cancel));
   finally
     hk_query_free(Q);
   end;
