@@ -88,3 +88,31 @@ shipped DLL is x86_64); the Lazarus `.lpk` packages additionally need
   compiles clean (`fpc -S2 -Fu../..`), run needs the 64-bit DLL.
 - `examples/lazarus/` — minimal form demo using `THakoComponent`
   (needs Lazarus/`lazbuild`; compile paths already point at this repo).
+
+## API guidance: query and write paths
+
+Consumers should not have to guess which execution or write entry point to use. The core exposes one canonical executor plus advisory-deprecated wrappers and several materialization lanes with different costs.
+
+### Execution lanes
+
+| Lane | Returns | Use when |
+|---|---|---|
+| canonical executor (`hk_query_execute_ex` / SDK default) | JSON documents for an application | ordinary API calls |
+| JSON egress (`hk_query_execute_json`) | JSON from pinned bytes, no owned document | wire/egress output |
+| handles (`hk_query_execute_to_handles`) | borrowed document handles | engine throughput, caller reads selected fields |
+| raw (`hk_query_execute_raw`) | pinned storage bytes | index-satisfied scans, zero decode |
+| aggregation / explain | aggregate values or plan report | tuning and aggregate-only queries |
+
+Do not compare a JSON-document lane with an engine-only lane and call it the same benchmark. Mark lanes without an equivalent in another engine as not applicable.
+
+### In this repository
+
+- hk_query_execute_ex is canonical; legacy execute wrappers are advisory-deprecated
+- hk_engine_insert_json and batch JSON writes
+- index readiness and awaitQuiescent
+- ownership: free handles and strings exactly once
+
+### Further reading
+
+- Core decision table: https://github.com/hakodb/hakodb/blob/main/docs/ffi-query-lanes.md
+- Manual C ABI chapter: https://hakodb.github.io/manual/sdk-c-abi.html
